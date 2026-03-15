@@ -1,5 +1,4 @@
-const CACHE = 'money-v2';
-// Hanya cache aset statis, BUKAN app.js dan index.html
+const CACHE = 'money-v3';
 const STATIC = ['/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -16,11 +15,19 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Selalu fetch fresh untuk app.js dan index.html
-  if (url.pathname === '/' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
-    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+
+  // Jangan pernah cache: Apps Script, JS, HTML
+  if (
+    url.hostname.includes('script.google.com') ||
+    url.hostname.includes('googleapis.com') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.html') ||
+    url.pathname === '/'
+  ) {
+    e.respondWith(fetch(e.request));
     return;
   }
+
   // Cache-first untuk aset lainnya
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
