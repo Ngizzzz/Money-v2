@@ -56,25 +56,34 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ─── Storage ──────────────────────────────────────────────────
+// ─── Cookie helpers (untuk scriptUrl agar tahan hard refresh) ──
+function setCookie(name, value, days) {
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Strict';
+}
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 function loadStorage() {
   try {
     txs = JSON.parse(localStorage.getItem('txs') || '[]');
     cfg = JSON.parse(localStorage.getItem('cfg') || '{}');
     cfg = { scriptUrl: '', ...cfg };
-    // Fallback: baca scriptUrl dari key terpisah supaya tidak hilang saat clear cache
-    if (!cfg.scriptUrl) {
-      cfg.scriptUrl = localStorage.getItem('scriptUrl_backup') || '';
-    }
-  } catch { 
-    txs = []; 
-    cfg = { scriptUrl: localStorage.getItem('scriptUrl_backup') || '' };
+    // Fallback ke cookie jika scriptUrl kosong
+    if (!cfg.scriptUrl) cfg.scriptUrl = getCookie('money_script_url');
+  } catch {
+    txs = [];
+    cfg = { scriptUrl: getCookie('money_script_url') || '' };
   }
 }
 function persist() {
   localStorage.setItem('txs', JSON.stringify(txs));
   localStorage.setItem('cfg', JSON.stringify(cfg));
-  // Simpan scriptUrl di key terpisah sebagai backup
-  if (cfg.scriptUrl) localStorage.setItem('scriptUrl_backup', cfg.scriptUrl);
+  // Simpan scriptUrl di cookie (tahan 365 hari, tidak hilang saat hard refresh)
+  if (cfg.scriptUrl) setCookie('money_script_url', cfg.scriptUrl, 365);
 }
 
 // ─── Theme ────────────────────────────────────────────────────
