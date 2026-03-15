@@ -45,6 +45,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   updateConnBadge();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   if (cfg.scriptUrl) await loadFromSheets();
+
+  // Auto-refresh setiap 30 detik
+  if (cfg.scriptUrl) setInterval(loadFromSheets, 30000);
+
+  // Refresh saat tab aktif kembali
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && cfg.scriptUrl) loadFromSheets();
+  });
 });
 
 // ─── Storage ──────────────────────────────────────────────────
