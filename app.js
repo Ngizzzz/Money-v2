@@ -480,22 +480,67 @@ async function loadFromSheets() {
   if (!cfg.scriptUrl) return;
   try {
     toast('Memuat data dari Sheets...', '');
+
+    // 1. Ambil data dari Sheets
     const res  = await fetch(cfg.scriptUrl.trim());
     const data = await res.json();
-    if (!data.success || !data.rows || !data.rows.length) {
-      toast('', ''); return;
-    }
+
     const allCats = [...CATS.expense, ...CATS.income];
-    txs = data.rows.map(r => {
+
+    // 2. Jika Sheets kosong, push data lokal yang belum sync ke Sheets
+    if (!data.success || !data.rows || !data.rows.length) {
+      const unsynced = txs.filter(t => !t.synced);
+      if (unsynced.length) {
+        const rows = unsynced.map(tx => [
+          tx.date, tx.type==='income'?'Pemasukan':'Pengeluaran',
+          tx.label, tx.amount, tx.note||'', tx.id
+        ]);
+        const pushRes = await fetch(cfg.scriptUrl.trim(), {
+          method: 'POST', body: JSON.stringify({ action: 'add', rows })
+        });
+        const pushData = await pushRes.json();
+        if (pushData.success) {
+          txs = txs.map(t => ({...t, synced: true}));
+          persist();
+          toast(`✓ ${unsynced.length} transaksi disinkronkan`, 'success');
+        }
+      } else {
+        toast('', '');
+      }
+      return;
+    }
+
+    // 3. Sheets punya data — jadikan sumber kebenaran utama
+    const sheetsRows = data.rows.map(r => {
       const cat = allCats.find(c => c.label === r.label) || { id: r.label, icon: '📦' };
       return { ...r, category: cat.id, icon: cat.icon };
     });
+
+    // 4. Cek apakah ada transaksi lokal yang belum ada di Sheets, push juga
+    const sheetsIds = new Set(sheetsRows.map(r => r.id));
+    const localOnly = txs.filter(t => !t.synced && !sheetsIds.has(t.id));
+
+    if (localOnly.length) {
+      const rows = localOnly.map(tx => [
+        tx.date, tx.type==='income'?'Pemasukan':'Pengeluaran',
+        tx.label, tx.amount, tx.note||'', tx.id
+      ]);
+      await fetch(cfg.scriptUrl.trim(), {
+        method: 'POST', body: JSON.stringify({ action: 'add', rows })
+      });
+      // Tambahkan ke sheetsRows
+      localOnly.forEach(tx => sheetsRows.unshift({...tx, synced: true}));
+    }
+
+    // 5. Simpan ke lokal
+    txs = sheetsRows;
     persist();
     updateBalance();
     renderRecent();
     setSyncDot('ok');
     toast(`✓ ${txs.length} transaksi dimuat dari Sheets`, 'success');
   } catch(e) {
+    console.error(e);
     toast('Gagal memuat dari Sheets', 'error');
   }
 }
