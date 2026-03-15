@@ -449,24 +449,12 @@
         <span class="conn-badge none" id="conn-badge">Belum terhubung</span>
       </div>
       <div>
-        <div class="field-label">Google Sheets API Key</div>
-        <input type="password" id="inp-apikey" placeholder="AIza..."/>
+        <div class="field-label">Google Apps Script URL</div>
+        <input type="text" id="inp-scripturl" placeholder="https://script.google.com/macros/s/.../exec"/>
         <div class="field-hint">
-          Dapatkan gratis di <code>console.cloud.google.com</code> → APIs &amp; Services → Credentials → API Key.<br>
-          Aktifkan <code>Google Sheets API</code> terlebih dahulu.
+          Buat via Google Sheets → <code>Extensions → Apps Script → Deploy → Web App</code><br>
+          Pastikan <code>Who has access</code> diset ke <code>Anyone</code>
         </div>
-      </div>
-      <div>
-        <div class="field-label">Spreadsheet ID</div>
-        <input type="text" id="inp-sheetid" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"/>
-        <div class="field-hint">
-          Copy dari URL:<br>
-          <code>docs.google.com/spreadsheets/d/<b>[ID INI]</b>/edit</code>
-        </div>
-      </div>
-      <div>
-        <div class="field-label">Nama Tab / Sheet</div>
-        <input type="text" id="inp-sheettab" placeholder="Transaksi" value="Transaksi"/>
       </div>
       <button class="btn-primary" id="btn-save-settings">Simpan & Hubungkan</button>
       <hr class="divider"/>
