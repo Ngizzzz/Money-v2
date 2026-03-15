@@ -438,20 +438,24 @@ function setSyncDot(state) {
 }
 
 // ─── Settings ─────────────────────────────────────────────────
+function btn(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', fn);
+}
 function setupSettings() {
-  document.getElementById('btn-settings').addEventListener('click', openSettings);
-  document.getElementById('close-settings').addEventListener('click', closeSettings);
-  document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-  document.getElementById('btn-sync').addEventListener('click', syncAll);
-  document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
-  document.getElementById('btn-clear').addEventListener('click', clearData);
-  document.getElementById('btn-load-sheets').addEventListener('click', async () => { closeSettings(); await loadFromSheets(); });
-  document.getElementById('btn-theme').addEventListener('click', () => {
+  btn('btn-settings', openSettings);
+  btn('close-settings', closeSettings);
+  btn('btn-save-settings', saveSettings);
+  btn('btn-sync', syncAll);
+  btn('btn-export-csv', exportCSV);
+  btn('btn-clear', clearData);
+  btn('btn-load-sheets', async () => { closeSettings(); await loadFromSheets(); });
+  btn('btn-theme', () => {
     const isLight = document.documentElement.classList.contains('light');
     applyTheme(isLight ? 'dark' : 'light');
   });
-  document.getElementById('theme-dark').addEventListener('click', () => applyTheme('dark'));
-  document.getElementById('theme-light').addEventListener('click', () => applyTheme('light'));
+  btn('theme-dark', () => applyTheme('dark'));
+  btn('theme-light', () => applyTheme('light'));
 
   // Prefill
   document.getElementById('inp-scripturl').value = cfg.scriptUrl || '';
