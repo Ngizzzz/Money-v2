@@ -1,8 +1,9 @@
-const CACHE = 'money-v1';
-const ASSETS = ['/', '/index.html', '/app.js', '/manifest.json'];
+const CACHE = 'money-v2';
+// Hanya cache aset statis, BUKAN app.js dan index.html
+const STATIC = ['/manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -14,6 +15,13 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Selalu fetch fresh untuk app.js dan index.html
+  if (url.pathname === '/' || url.pathname.endsWith('.js') || url.pathname.endsWith('.html')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+  // Cache-first untuk aset lainnya
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
