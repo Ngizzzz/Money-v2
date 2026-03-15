@@ -31,7 +31,7 @@ let selectedCat = '';
 let currentPage = 'beranda';
 
 // ─── Boot ─────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   loadStorage();
   initTheme();
   setDefaultDate();
@@ -44,6 +44,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupSettings();
   updateConnBadge();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  if (cfg.scriptUrl) await loadFromSheets();
 });
 
 // ─── Storage ──────────────────────────────────────────────────
@@ -238,9 +239,11 @@ function renderTxList(container, list) {
     </div>`).join('');
   container.querySelectorAll('.tx-del').forEach(b =>
     b.addEventListener('click', async () => {
-      txs = txs.filter(t => t.id !== b.dataset.id);
+      const deletedId = b.dataset.id;
+      txs = txs.filter(t => t.id !== deletedId);
       persist(); updateBalance(); renderRecent();
       if (currentPage === 'riwayat') renderHistory();
+      if (cfg.scriptUrl) deleteFromSheets(deletedId);
     })
   );
 }
@@ -406,6 +409,7 @@ function setupSettings() {
   document.getElementById('btn-sync').addEventListener('click', syncAll);
   document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
   document.getElementById('btn-clear').addEventListener('click', clearData);
+  document.getElementById('btn-load-sheets').addEventListener('click', async () => { closeSettings(); await loadFromSheets(); });
   document.getElementById('btn-theme').addEventListener('click', () => {
     const isLight = document.documentElement.classList.contains('light');
     applyTheme(isLight ? 'dark' : 'light');
@@ -469,4 +473,41 @@ function toast(msg, type='') {
   el.className = 'toast show' + (type ? ' '+type : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─── Load from Sheets ─────────────────────────────────────────
+async function loadFromSheets() {
+  if (!cfg.scriptUrl) return;
+  try {
+    toast('Memuat data dari Sheets...', '');
+    const res  = await fetch(cfg.scriptUrl.trim());
+    const data = await res.json();
+    if (!data.success || !data.rows || !data.rows.length) {
+      toast('', ''); return;
+    }
+    const allCats = [...CATS.expense, ...CATS.income];
+    txs = data.rows.map(r => {
+      const cat = allCats.find(c => c.label === r.label) || { id: r.label, icon: '📦' };
+      return { ...r, category: cat.id, icon: cat.icon };
+    });
+    persist();
+    updateBalance();
+    renderRecent();
+    setSyncDot('ok');
+    toast(`✓ ${txs.length} transaksi dimuat dari Sheets`, 'success');
+  } catch(e) {
+    toast('Gagal memuat dari Sheets', 'error');
+  }
+}
+
+// ─── Delete from Sheets ───────────────────────────────────────
+async function deleteFromSheets(id) {
+  try {
+    await fetch(cfg.scriptUrl.trim(), {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete', id })
+    });
+  } catch(e) {
+    console.error('Gagal hapus dari Sheets:', e);
+  }
 }
