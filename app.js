@@ -25,7 +25,7 @@ const catInfo = id => ALL_CATS.find(c => c.id === id) || { label: id, icon: '�
 
 // ─── State ────────────────────────────────────────────────────
 let txs = [];
-let cfg = { apiKey: '', sheetId: '', sheetTab: 'Transaksi' };
+let cfg = { scriptUrl: '' };
 let currentType = 'expense';
 let selectedCat = '';
 let currentPage = 'beranda';
@@ -51,8 +51,8 @@ function loadStorage() {
   try {
     txs = JSON.parse(localStorage.getItem('txs') || '[]');
     cfg = JSON.parse(localStorage.getItem('cfg') || '{}');
-    cfg = { apiKey: '', sheetId: '', sheetTab: 'Transaksi', ...cfg };
-  } catch { txs = []; cfg = { apiKey: '', sheetId: '', sheetTab: 'Transaksi' }; }
+    cfg = { scriptUrl: '', ...cfg };
+  } catch { txs = []; cfg = { scriptUrl: '' }; }
 }
 function persist() {
   localStorage.setItem('txs', JSON.stringify(txs));
@@ -184,7 +184,7 @@ async function saveTransaction() {
   renderCats();
   toast('✓ Tersimpan!', 'success');
 
-  if (cfg.apiKey && cfg.sheetId) syncOne(tx);
+  if (cfg.scriptUrl) syncOne(tx);
 }
 
 // ─── Recent list ──────────────────────────────────────────────
@@ -348,21 +348,24 @@ function renderBar() {
   ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', W-98,27);
 }
 
-// ─── Google Sheets Sync ───────────────────────────────────────
+// ─── Google Sheets Sync (via Apps Script) ─────────────────────
 async function syncAll() {
   const unsynced = txs.filter(t => !t.synced);
   if (!unsynced.length) return toast('Semua data sudah tersinkronisasi ✓');
-  if (!cfg.apiKey || !cfg.sheetId) return toast('Atur API Key & Sheet ID dulu', 'error');
+  if (!cfg.scriptUrl) return toast('Atur Script URL dulu di Pengaturan', 'error');
 
   setSyncDot('');
   try {
-    await ensureHeader();
-    const values = unsynced.map(tx => [
+    const rows = unsynced.map(tx => [
       tx.date, tx.type==='income'?'Pemasukan':'Pengeluaran',
       tx.label, tx.amount, tx.note||'', tx.id
     ]);
-    const res = await sheetsAppend(values);
-    if (!res.ok) throw new Error(await res.text());
+    const res = await fetch(cfg.scriptUrl.trim(), {
+      method: 'POST',
+      body: JSON.stringify({ rows })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Gagal');
     txs = txs.map(t => unsynced.find(u=>u.id===t.id) ? {...t,synced:true} : t);
     persist();
     setSyncDot('ok');
@@ -374,45 +377,21 @@ async function syncAll() {
 }
 
 async function syncOne(tx) {
+  if (!cfg.scriptUrl) return;
   try {
-    await ensureHeader();
-    const res = await sheetsAppend([[tx.date, tx.type==='income'?'Pemasukan':'Pengeluaran', tx.label, tx.amount, tx.note||'', tx.id]]);
-    if (res.ok) {
+    const rows = [[tx.date, tx.type==='income'?'Pemasukan':'Pengeluaran', tx.label, tx.amount, tx.note||'', tx.id]];
+    const res = await fetch(cfg.scriptUrl.trim(), {
+      method: 'POST',
+      body: JSON.stringify({ rows })
+    });
+    const data = await res.json();
+    if (data.success) {
       txs = txs.map(t => t.id===tx.id ? {...t,synced:true} : t);
       persist(); setSyncDot('ok');
     }
   } catch { setSyncDot('err'); }
 }
 
-async function ensureHeader() {
-  const key = cfg.apiKey.trim();
-  const sid = cfg.sheetId.trim();
-  const tab = encodeURIComponent(cfg.sheetTab.trim());
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A1:F1?key=${key}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message || res.statusText);
-  }
-  const data = await res.json();
-  if (!data.values?.length) {
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A1:F1?valueInputOption=USER_ENTERED&key=${key}`,
-      { method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({values:[['Tanggal','Tipe','Kategori','Jumlah (Rp)','Catatan','ID']]}) }
-    );
-  }
-}
-
-function sheetsAppend(values) {
-  const key = cfg.apiKey.trim();
-  const sid = cfg.sheetId.trim();
-  const tab = encodeURIComponent(cfg.sheetTab.trim());
-  return fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&key=${key}`,
-    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({values}) }
-  );
-}
 
 function setSyncDot(state) {
   const dot = document.getElementById('sync-dot');
@@ -435,9 +414,7 @@ function setupSettings() {
   document.getElementById('theme-light').addEventListener('click', () => applyTheme('light'));
 
   // Prefill
-  document.getElementById('inp-apikey').value  = cfg.apiKey  || '';
-  document.getElementById('inp-sheetid').value = cfg.sheetId || '';
-  document.getElementById('inp-sheettab').value= cfg.sheetTab|| 'Transaksi';
+  document.getElementById('inp-scripturl').value = cfg.scriptUrl || '';
 
   // Sync theme button active state
   updateThemeButtons(localStorage.getItem('theme') || 'dark');
@@ -447,9 +424,7 @@ function openSettings()  { document.getElementById('settings-panel').classList.a
 function closeSettings() { document.getElementById('settings-panel').classList.remove('open'); }
 
 function saveSettings() {
-  cfg.apiKey   = document.getElementById('inp-apikey').value.trim();
-  cfg.sheetId  = document.getElementById('inp-sheetid').value.trim();
-  cfg.sheetTab = document.getElementById('inp-sheettab').value.trim() || 'Transaksi';
+  cfg.scriptUrl = document.getElementById('inp-scripturl').value.trim();
   persist();
   updateConnBadge();
   toast('✓ Pengaturan disimpan!', 'success');
@@ -457,7 +432,7 @@ function saveSettings() {
 
 function updateConnBadge() {
   const el = document.getElementById('conn-badge');
-  if (cfg.apiKey && cfg.sheetId) {
+  if (cfg.scriptUrl) {
     el.textContent = '● Terhubung';
     el.className = 'conn-badge';
   } else {
