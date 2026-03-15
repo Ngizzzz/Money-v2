@@ -385,12 +385,19 @@ async function syncOne(tx) {
 }
 
 async function ensureHeader() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(cfg.sheetTab)}!A1:F1?key=${cfg.apiKey}`;
+  const key = cfg.apiKey.trim();
+  const sid = cfg.sheetId.trim();
+  const tab = encodeURIComponent(cfg.sheetTab.trim());
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A1:F1?key=${key}`;
   const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || res.statusText);
+  }
   const data = await res.json();
   if (!data.values?.length) {
     await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(cfg.sheetTab)}!A1:F1?valueInputOption=USER_ENTERED&key=${cfg.apiKey}`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A1:F1?valueInputOption=USER_ENTERED&key=${key}`,
       { method:'PUT', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({values:[['Tanggal','Tipe','Kategori','Jumlah (Rp)','Catatan','ID']]}) }
     );
@@ -398,8 +405,11 @@ async function ensureHeader() {
 }
 
 function sheetsAppend(values) {
+  const key = cfg.apiKey.trim();
+  const sid = cfg.sheetId.trim();
+  const tab = encodeURIComponent(cfg.sheetTab.trim());
   return fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${cfg.sheetId}/values/${encodeURIComponent(cfg.sheetTab)}!A:F:append?valueInputOption=USER_ENTERED&key=${cfg.apiKey}`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${tab}!A:F:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&key=${key}`,
     { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({values}) }
   );
 }
