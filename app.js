@@ -46,8 +46,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   if (cfg.scriptUrl) await loadFromSheets();
 
-  // Auto-refresh setiap 15 detik — pakai fungsi agar baca cfg terbaru
-  setInterval(() => { if (cfg.scriptUrl) loadFromSheets(); }, 15000);
+  // Auto-refresh setiap 15 detik
+  setInterval(async () => {
+    if (cfg.scriptUrl) {
+      console.log('[Money] auto-refresh:', new Date().toLocaleTimeString());
+      await loadFromSheets();
+    }
+  }, 15000);
 
   // Refresh saat tab aktif kembali
   document.addEventListener('visibilitychange', () => {
