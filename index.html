@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#0d0d10"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Money"/>
@@ -13,319 +14,214 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:       #0d0d10;
-      --s1:       #14141a;
-      --s2:       #1c1c24;
-      --s3:       #24242e;
-      --border:   #2a2a36;
-      --border2:  #363644;
-      --lime:     #d4f54e;
-      --lime-d:   rgba(212,245,78,0.10);
-      --mint:     #4ef5b0;
-      --mint-d:   rgba(78,245,176,0.10);
-      --rose:     #f54e6a;
-      --rose-d:   rgba(245,78,106,0.10);
-      --amber:    #f5a64e;
-      --amber-d:  rgba(245,166,78,0.10);
-      --sky:      #4eb8f5;
-      --text:     #eeeae2;
-      --t2:       #8a8799;
-      --t3:       #4a4858;
-      --r:        10px;
-      --rsm:      7px;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --bg:#0d0d10; --s1:#14141a; --s2:#1c1c24; --s3:#24242e;
+      --border:#2a2a36; --border2:#363644;
+      --lime:#d4f54e; --lime-d:rgba(212,245,78,0.10);
+      --mint:#4ef5b0; --mint-d:rgba(78,245,176,0.10);
+      --rose:#f54e6a; --rose-d:rgba(245,78,106,0.10);
+      --amber:#f5a64e; --amber-d:rgba(245,166,78,0.10);
+      --sky:#4eb8f5; --sky-d:rgba(78,184,245,0.10);
+      --text:#eeeae2; --t2:#8a8799; --t3:#4a4858;
+      --r:10px; --rsm:7px;
+      --safe-top:env(safe-area-inset-top,0px);
+      --safe-bot:env(safe-area-inset-bottom,0px);
     }
-
     html.light {
-      --bg:       #f5f4f0;
-      --s1:       #ffffff;
-      --s2:       #eceae4;
-      --s3:       #e2e0d8;
-      --border:   #d8d5cc;
-      --border2:  #c8c5bc;
-      --lime:     #5a8a00;
-      --lime-d:   rgba(90,138,0,0.10);
-      --mint:     #007a50;
-      --mint-d:   rgba(0,122,80,0.10);
-      --rose:     #c8002a;
-      --rose-d:   rgba(200,0,42,0.08);
-      --amber:    #a05a00;
-      --amber-d:  rgba(160,90,0,0.10);
-      --sky:      #0070b8;
-      --text:     #1a1a22;
-      --t2:       #6a6878;
-      --t3:       #a8a6b4;
+      --bg:#f5f4f0; --s1:#ffffff; --s2:#eceae4; --s3:#e2e0d8;
+      --border:#d8d5cc; --border2:#c8c5bc;
+      --lime:#5a8a00; --lime-d:rgba(90,138,0,0.10);
+      --mint:#007a50; --mint-d:rgba(0,122,80,0.10);
+      --rose:#c8002a; --rose-d:rgba(200,0,42,0.08);
+      --amber:#a05a00; --amber-d:rgba(160,90,0,0.10);
+      --sky:#0070b8; --sky-d:rgba(0,112,184,0.10);
+      --text:#1a1a22; --t2:#6a6878; --t3:#a8a6b4;
     }
+    html { transition:background .25s,color .25s; }
+    *,*::before,*::after { transition:background-color .2s,border-color .2s,color .2s; }
+    canvas,input[type="range"] { transition:none !important; }
+    html.light input[type="date"]::-webkit-calendar-picker-indicator { filter:none; }
+    html.light select option { background:#ffffff; }
+    html.light .btn-save.expense { background:var(--rose);color:#fff; }
+    html.light .btn-save.income  { background:var(--mint);color:#fff; }
+    html.light .btn-save.transfer{ background:var(--sky);color:#fff; }
+    html.light .btn-primary { color:#fff; }
 
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
+    html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; overflow:hidden; }
+    #app { height:100%; display:flex; flex-direction:column; max-width:480px; margin:0 auto; position:relative; }
+    #main { flex:1; overflow-y:auto; padding-bottom:calc(80px + var(--safe-bot)); scroll-behavior:smooth; }
+    #main::-webkit-scrollbar { display:none; }
 
-    #app {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      max-width: 480px;
-      margin: 0 auto;
-      position: relative;
-    }
+    .topbar { padding:calc(14px + var(--safe-top)) 20px 12px; display:flex; align-items:center; justify-content:space-between; background:var(--bg); position:sticky; top:0; z-index:5; border-bottom:1px solid var(--border); }
+    .app-title { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+    .topbar-right { display:flex; gap:6px; align-items:center; }
+    .icon-btn { width:34px; height:34px; background:var(--s2); border:1px solid var(--border); border-radius:var(--rsm); color:var(--t2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; font-size:15px; }
+    .icon-btn:hover { background:var(--s3); color:var(--text); }
+    .sync-dot { width:7px; height:7px; border-radius:50%; background:var(--t3); display:inline-block; margin-left:3px; transition:background .3s; }
+    .sync-dot.ok { background:var(--mint); }
+    .sync-dot.err { background:var(--rose); }
+    .theme-btn { width:34px; height:34px; background:var(--s2); border:1px solid var(--border); border-radius:var(--rsm); color:var(--t2); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; transition:all .15s; }
 
-    /* ── Scrollable main ── */
-    #main { flex: 1; overflow-y: auto; padding-bottom: calc(80px + var(--safe-bot)); scroll-behavior: smooth; }
-    #main::-webkit-scrollbar { display: none; }
+    .balance-section { padding:18px 20px 0; }
+    .balance-label { font-size:10px; color:var(--t3); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+    .balance-amount { font-family:'JetBrains Mono',monospace; font-size:32px; font-weight:500; color:var(--lime); letter-spacing:-1px; margin-bottom:14px; transition:color .3s; }
+    .balance-amount.negative { color:var(--rose); }
+    .mini-cards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .mini-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--r); padding:10px 12px; }
+    .mini-card.income { border-left:3px solid var(--mint); }
+    .mini-card.expense { border-left:3px solid var(--rose); }
+    .mc-label { font-size:10px; color:var(--t3); letter-spacing:0.5px; text-transform:uppercase; margin-bottom:3px; }
+    .mc-val { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; }
+    .mini-card.income .mc-val { color:var(--mint); }
+    .mini-card.expense .mc-val { color:var(--rose); }
 
-    /* ── Header ── */
-    .topbar {
-      padding: calc(16px + var(--safe-top)) 20px 14px;
-      display: flex; align-items: flex-end; justify-content: space-between;
-      background: var(--bg);
-      position: sticky; top: 0; z-index: 5;
-      border-bottom: 1px solid var(--border);
-    }
-    .app-title {
-      font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
-      color: var(--text);
-    }
-    .app-title span { color: var(--lime); }
-    .topbar-right { display: flex; gap: 8px; align-items: center; }
-    .icon-btn {
-      width: 36px; height: 36px;
-      background: var(--s2); border: 1px solid var(--border);
-      border-radius: var(--rsm); color: var(--t2);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; transition: all .15s; font-size: 16px;
-    }
-    .icon-btn:hover { background: var(--s3); color: var(--text); }
-    .sync-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--t3); display: inline-block; margin-left: 4px;
-      transition: background .3s;
-    }
-    .sync-dot.ok { background: var(--mint); }
-    .sync-dot.err { background: var(--rose); }
+    .section { padding:16px 20px 0; }
+    .section-title { font-size:10px; color:var(--t3); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
 
-    /* ── Balance ── */
-    .balance-section { padding: 20px 20px 0; }
-    .balance-label { font-size: 11px; color: var(--t3); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-    .balance-amount {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 36px; font-weight: 500;
-      color: var(--lime); letter-spacing: -1px;
-      margin-bottom: 16px;
-      transition: color .3s;
-    }
-    .balance-amount.negative { color: var(--rose); }
-    .mini-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .mini-card {
-      background: var(--s1); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 12px 14px;
-    }
-    .mini-card.income { border-left: 3px solid var(--mint); }
-    .mini-card.expense { border-left: 3px solid var(--rose); }
-    .mc-label { font-size: 10px; color: var(--t3); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
-    .mc-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; }
-    .mini-card.income .mc-val { color: var(--mint); }
-    .mini-card.expense .mc-val { color: var(--rose); }
+    .type-toggle { display:flex; background:var(--s1); border:1px solid var(--border); border-radius:var(--r); padding:3px; gap:3px; margin-bottom:12px; }
+    .type-btn { flex:1; padding:8px 4px; border:none; border-radius:var(--rsm); background:none; color:var(--t2); font-family:'Syne',sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; }
+    .type-btn.active.expense  { background:var(--rose-d); color:var(--rose); }
+    .type-btn.active.income   { background:var(--mint-d); color:var(--mint); }
+    .type-btn.active.transfer { background:var(--sky-d);  color:var(--sky); }
 
-    /* ── Sections ── */
-    .section { padding: 20px 20px 0; }
-    .section-title {
-      font-size: 11px; color: var(--t3); letter-spacing: 1px;
-      text-transform: uppercase; margin-bottom: 12px;
-    }
+    .input-row { display:flex; gap:8px; margin-bottom:10px; }
+    .input-wrap { flex:1; position:relative; }
+    .input-prefix { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--t3); font-family:'JetBrains Mono',monospace; font-size:12px; pointer-events:none; }
+    input,select { width:100%; background:var(--s1); border:1px solid var(--border); border-radius:var(--rsm); color:var(--text); font-family:'Syne',sans-serif; font-size:13px; padding:9px 10px; outline:none; transition:border .15s; -webkit-appearance:none; }
+    input.has-prefix { padding-left:26px; }
+    input:focus,select:focus { border-color:var(--lime); }
+    input::placeholder { color:var(--t3); }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.4); }
+    select option { background:var(--s2); }
 
-    /* ── Quick Add ── */
-    .type-toggle {
-      display: flex; background: var(--s1); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 4px; gap: 4px; margin-bottom: 14px;
-    }
-    .type-btn {
-      flex: 1; padding: 9px; border: none; border-radius: var(--rsm);
-      background: none; color: var(--t2); font-family: 'Syne', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
-    }
-    .type-btn.active.expense { background: var(--rose-d); color: var(--rose); }
-    .type-btn.active.income  { background: var(--mint-d);  color: var(--mint); }
+    .cat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+    .cat-btn { background:var(--s1); border:1px solid var(--border); border-radius:var(--rsm); color:var(--t2); padding:7px 4px; cursor:pointer; text-align:center; font-size:10px; font-family:'Syne',sans-serif; font-weight:500; transition:all .15s; display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .cat-btn .ci { font-size:16px; line-height:1; }
+    .cat-btn:hover { background:var(--s2); color:var(--text); }
+    .cat-btn.sel.expense { background:var(--rose-d); border-color:var(--rose); color:var(--rose); }
+    .cat-btn.sel.income  { background:var(--mint-d); border-color:var(--mint); color:var(--mint); }
 
-    .input-row { display: flex; gap: 10px; margin-bottom: 12px; }
-    .input-wrap { flex: 1; position: relative; }
-    .input-prefix {
-      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      color: var(--t3); font-family: 'JetBrains Mono', monospace; font-size: 13px;
-      pointer-events: none;
-    }
-    input, select {
-      width: 100%; background: var(--s1); border: 1px solid var(--border);
-      border-radius: var(--rsm); color: var(--text);
-      font-family: 'Syne', sans-serif; font-size: 14px;
-      padding: 11px 12px; outline: none; transition: border .15s;
-      -webkit-appearance: none;
-    }
-    input.has-prefix { padding-left: 28px; }
-    input:focus, select:focus { border-color: var(--lime); }
-    input::placeholder { color: var(--t3); }
-    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.4); }
-    select option { background: var(--s2); }
+    .wallet-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .wallet-row label { font-size:11px; color:var(--t3); white-space:nowrap; min-width:32px; }
 
-    .cat-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
-    }
-    .cat-btn {
-      background: var(--s1); border: 1px solid var(--border); border-radius: var(--rsm);
-      color: var(--t2); padding: 8px 4px; cursor: pointer;
-      text-align: center; font-size: 10px; font-family: 'Syne', sans-serif; font-weight: 500;
-      transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
-    }
-    .cat-btn .ci { font-size: 18px; line-height: 1; }
-    .cat-btn:hover { background: var(--s2); color: var(--text); }
-    .cat-btn.sel.expense { background: var(--rose-d); border-color: var(--rose); color: var(--rose); }
-    .cat-btn.sel.income  { background: var(--mint-d);  border-color: var(--mint);  color: var(--mint);  }
+    .btn-save { width:100%; padding:12px; border:none; border-radius:var(--rsm); font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:all .15s; margin-top:2px; }
+    .btn-save.expense  { background:var(--rose); color:#fff; }
+    .btn-save.income   { background:var(--mint); color:#0d0d10; }
+    .btn-save.transfer { background:var(--sky);  color:#0d0d10; }
+    .btn-save:hover { opacity:.88; transform:translateY(-1px); }
+    .btn-save:active { transform:translateY(0); }
 
-    .btn-save {
-      width: 100%; padding: 13px; border: none; border-radius: var(--rsm);
-      font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-      cursor: pointer; transition: all .15s; letter-spacing: 0.3px;
-    }
-    .btn-save.expense { background: var(--rose); color: #fff; }
-    .btn-save.income  { background: var(--mint); color: #0d0d10; }
-    .btn-save:hover { opacity: 0.88; transform: translateY(-1px); }
-    .btn-save:active { transform: translateY(0); }
+    .toast { position:fixed; bottom:calc(88px + var(--safe-bot)); left:50%; transform:translateX(-50%) translateY(10px); background:var(--s3); border:1px solid var(--border2); border-radius:20px; padding:8px 16px; font-size:12px; color:var(--text); opacity:0; transition:all .25s; pointer-events:none; white-space:nowrap; z-index:99; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast.success { border-color:var(--mint); color:var(--mint); }
+    .toast.error   { border-color:var(--rose); color:var(--rose); }
 
-    /* ── Toast ── */
-    .toast {
-      position: fixed; bottom: calc(90px + var(--safe-bot)); left: 50%; transform: translateX(-50%) translateY(10px);
-      background: var(--s3); border: 1px solid var(--border2); border-radius: 20px;
-      padding: 9px 18px; font-size: 13px; color: var(--text);
-      opacity: 0; transition: all .25s; pointer-events: none; white-space: nowrap; z-index: 99;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .toast.success { border-color: var(--mint); color: var(--mint); }
-    .toast.error   { border-color: var(--rose); color: var(--rose); }
+    .tx-list { display:flex; flex-direction:column; gap:6px; }
+    .tx-item { display:flex; align-items:center; gap:10px; background:var(--s1); border:1px solid var(--border); border-radius:var(--r); padding:10px 12px; animation:fadeIn .2s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none} }
+    .tx-ico { width:34px; height:34px; border-radius:var(--rsm); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .tx-ico.income   { background:var(--mint-d); }
+    .tx-ico.expense  { background:var(--rose-d); }
+    .tx-ico.transfer { background:var(--sky-d); }
+    .tx-body { flex:1; min-width:0; }
+    .tx-cat  { font-size:12px; font-weight:600; }
+    .tx-meta { font-size:10px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tx-right { text-align:right; flex-shrink:0; }
+    .tx-amt  { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; }
+    .tx-amt.income   { color:var(--mint); }
+    .tx-amt.expense  { color:var(--rose); }
+    .tx-amt.transfer { color:var(--sky); }
+    .tx-date { font-size:10px; color:var(--t3); margin-top:1px; }
+    .tx-del  { background:none; border:none; color:var(--t3); cursor:pointer; font-size:13px; padding:3px 5px; border-radius:4px; transition:color .15s; flex-shrink:0; }
+    .tx-del:hover { color:var(--rose); }
+    .empty { text-align:center; color:var(--t3); padding:24px 0; font-size:12px; }
 
-    /* ── Transactions ── */
-    .tx-list { display: flex; flex-direction: column; gap: 8px; }
-    .tx-item {
-      display: flex; align-items: center; gap: 12px;
-      background: var(--s1); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 12px 14px;
-      animation: fadeIn .2s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    .tx-ico {
-      width: 38px; height: 38px; border-radius: var(--rsm); flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; font-size: 18px;
-    }
-    .tx-ico.income  { background: var(--mint-d); }
-    .tx-ico.expense { background: var(--rose-d); }
-    .tx-body { flex: 1; min-width: 0; }
-    .tx-cat  { font-size: 13px; font-weight: 600; }
-    .tx-meta { font-size: 11px; color: var(--t3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tx-right { text-align: right; flex-shrink: 0; }
-    .tx-amt  { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
-    .tx-amt.income  { color: var(--mint); }
-    .tx-amt.expense { color: var(--rose); }
-    .tx-date { font-size: 10px; color: var(--t3); margin-top: 2px; }
-    .tx-del {
-      background: none; border: none; color: var(--t3); cursor: pointer;
-      font-size: 14px; padding: 4px; border-radius: 4px; transition: color .15s; flex-shrink: 0;
-    }
-    .tx-del:hover { color: var(--rose); }
-    .empty { text-align: center; color: var(--t3); padding: 28px 0; font-size: 13px; }
+    .chart-wrap { background:var(--s1); border:1px solid var(--border); border-radius:var(--r); padding:14px; margin-bottom:10px; }
+    .chart-sub { font-size:11px; color:var(--t2); margin-bottom:10px; font-weight:600; }
+    .legend { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .leg-item { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--t2); }
+    .leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-    /* ── Charts ── */
-    .chart-wrap { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
-    .chart-sub { font-size: 12px; color: var(--t2); margin-bottom: 12px; font-weight: 600; }
-    canvas { display: block; }
-    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-    .leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--t2); }
-    .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    /* Wallet Page */
+    .wallet-summary { padding:16px 20px 0; }
+    .wallet-total-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--r); padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .wtc-label { font-size:10px; color:var(--t3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+    .wtc-val { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:500; color:var(--lime); }
+    .wallet-cats { display:flex; flex-direction:column; gap:10px; padding:14px 20px; }
+    .wallet-cat-card { background:var(--s1); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+    .wallet-cat-hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; cursor:pointer; user-select:none; }
+    .wallet-cat-hdr-left { display:flex; align-items:center; gap:10px; }
+    .wallet-cat-icon { font-size:20px; }
+    .wallet-cat-info { }
+    .wallet-cat-name { font-size:13px; font-weight:700; }
+    .wallet-cat-total { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--lime); margin-top:1px; }
+    .wallet-cat-actions { display:flex; align-items:center; gap:4px; }
+    .wcat-toggle { color:var(--t3); font-size:11px; transition:transform .2s; padding:4px; }
+    .wcat-toggle.open { transform:rotate(180deg); }
+    .wallet-items { display:none; border-top:1px solid var(--border); }
+    .wallet-items.open { display:block; }
+    .wallet-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border); gap:8px; }
+    .wallet-item:last-child { border-bottom:none; }
+    .wallet-item-left { flex:1; min-width:0; }
+    .wallet-item-name { font-size:12px; font-weight:600; }
+    .wallet-item-sub { font-size:10px; color:var(--t3); margin-top:1px; }
+    .wallet-item-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+    .wallet-item-bal { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--lime); }
+    .wallet-item-bal.negative { color:var(--rose); }
+    .wallet-item-btn { background:none; border:none; color:var(--t3); cursor:pointer; font-size:13px; padding:3px 5px; border-radius:4px; transition:color .15s; }
+    .wallet-item-btn:hover { color:var(--lime); }
+    .wallet-item-btn.del:hover { color:var(--rose); }
+    .wallet-add-item-btn { display:flex; align-items:center; gap:6px; padding:10px 14px; color:var(--t3); font-size:12px; cursor:pointer; background:none; border:none; font-family:'Syne',sans-serif; transition:color .15s; width:100%; }
+    .wallet-add-item-btn:hover { color:var(--lime); }
+    .counted-badge { font-size:9px; padding:2px 6px; border-radius:10px; font-weight:600; }
+    .counted-badge.yes { background:var(--mint-d); color:var(--mint); }
+    .counted-badge.no  { background:var(--s2); color:var(--t3); }
 
-    /* ── Bottom Nav ── */
-    .bottom-nav {
-      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%; max-width: 480px;
-      padding: 10px 20px calc(10px + var(--safe-bot));
-      background: var(--bg); border-top: 1px solid var(--border);
-      display: flex; z-index: 10;
-    }
-    .nav-btn {
-      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
-      background: none; border: none; color: var(--t3); cursor: pointer;
-      font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 600;
-      letter-spacing: 0.3px; text-transform: uppercase; padding: 6px 0;
-      transition: color .15s;
-    }
-    .nav-btn svg { transition: transform .15s; }
-    .nav-btn.active { color: var(--lime); }
-    .nav-btn.active svg { transform: scale(1.1); }
+    /* Bottom Nav */
+    .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; padding:8px 20px calc(8px + var(--safe-bot)); background:var(--bg); border-top:1px solid var(--border); display:flex; z-index:10; }
+    .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--t3); cursor:pointer; font-family:'Syne',sans-serif; font-size:9px; font-weight:600; letter-spacing:0.3px; text-transform:uppercase; padding:5px 0; transition:color .15s; }
+    .nav-btn.active { color:var(--lime); }
 
-    /* ── Settings Panel ── */
-    .sheet-panel {
-      position: fixed; inset: 0; background: var(--bg); z-index: 20;
-      transform: translateX(100%); transition: transform .25s ease;
-      display: flex; flex-direction: column; max-width: 480px; margin: 0 auto;
-    }
-    .sheet-panel.open { transform: none; }
-    .panel-hdr {
-      padding: calc(16px + var(--safe-top)) 20px 14px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .panel-title { font-size: 17px; font-weight: 700; }
-    .panel-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-    .field-label { font-size: 11px; color: var(--t3); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; }
-    .field-hint { font-size: 11px; color: var(--t3); margin-top: 5px; line-height: 1.5; }
-    .field-hint code { font-family: 'JetBrains Mono', monospace; color: var(--amber); font-size: 10px; }
-    .btn-primary {
-      width: 100%; padding: 13px; background: var(--lime); color: #0d0d10;
-      border: none; border-radius: var(--rsm); font-family: 'Syne', sans-serif;
-      font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s;
-    }
-    .btn-primary:hover { opacity: 0.88; }
-    .btn-ghost {
-      width: 100%; padding: 11px; background: none; color: var(--rose);
-      border: 1px solid var(--rose); border-radius: var(--rsm); font-family: 'Syne', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer; opacity: 0.7; transition: opacity .15s;
-    }
-    .btn-ghost:hover { opacity: 1; }
-    .divider { border: none; border-top: 1px solid var(--border); }
-    .conn-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 11px; padding: 4px 10px; border-radius: 20px;
-      background: var(--mint-d); color: var(--mint); font-weight: 600;
-    }
-    .conn-badge.none { background: var(--s2); color: var(--t3); }
+    /* Panels */
+    .sheet-panel { position:fixed; inset:0; background:var(--bg); z-index:20; transform:translateX(100%); transition:transform .25s ease; display:flex; flex-direction:column; max-width:480px; margin:0 auto; }
+    .sheet-panel.open { transform:none; }
+    .panel-hdr { padding:calc(14px + var(--safe-top)) 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .panel-title { font-size:16px; font-weight:700; }
+    .panel-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:14px; }
+    .field-label { font-size:10px; color:var(--t3); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:5px; }
+    .field-hint { font-size:10px; color:var(--t3); margin-top:4px; line-height:1.5; }
+    .field-hint code { font-family:'JetBrains Mono',monospace; color:var(--amber); }
+    .btn-primary { width:100%; padding:12px; background:var(--lime); color:#0d0d10; border:none; border-radius:var(--rsm); font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:opacity .15s; }
+    .btn-primary:hover { opacity:.88; }
+    .btn-danger { width:100%; padding:10px; background:none; color:var(--rose); border:1px solid var(--rose); border-radius:var(--rsm); font-family:'Syne',sans-serif; font-size:12px; font-weight:600; cursor:pointer; opacity:.7; transition:opacity .15s; }
+    .btn-danger:hover { opacity:1; }
+    .divider { border:none; border-top:1px solid var(--border); }
+    .conn-badge { display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:4px 10px; border-radius:20px; background:var(--mint-d); color:var(--mint); font-weight:600; }
+    .conn-badge.none { background:var(--s2); color:var(--t3); }
+    .filter-bar { display:flex; gap:8px; margin-bottom:10px; }
+    .filter-bar select { flex:1; font-size:12px; padding:8px 10px; }
+    .page { display:none; }
+    .page.active { display:block; }
 
-    /* ── Filter bar ── */
-    .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; }
-    .filter-bar select { flex: 1; font-size: 12px; padding: 8px 10px; }
+    /* Chart tabs */
+    .chart-tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px; }
+    .chart-tabs::-webkit-scrollbar { display:none; }
+    .chart-tab { flex-shrink:0; padding:7px 12px; background:var(--s1); border:1px solid var(--border); border-radius:20px; color:var(--t2); font-family:'Syne',sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .chart-tab:hover { color:var(--text); border-color:var(--border2); }
+    .chart-tab.active { background:var(--lime-d); border-color:var(--lime); color:var(--lime); }
+    .chart-panel { display:none; }
+    .chart-panel.active { display:block; }
 
-    /* ── Page views ── */
-    .page { display: none; }
-    .page.active { display: block; }
-
-    /* ── Theme transition ── */
-    html { transition: background .25s, color .25s; }
-    *, *::before, *::after { transition: background-color .2s, border-color .2s, color .2s; }
-    canvas, input[type="range"] { transition: none !important; }
-
-    /* ── Light mode overrides ── */
-    html.light input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
-    html.light select option { background: #ffffff; }
-    html.light .btn-save.expense { background: var(--rose); color: #fff; }
-    html.light .btn-save.income  { background: var(--mint); color: #fff; }
-    html.light .btn-primary { color: #fff; }
-
-    /* ── Theme toggle button ── */
-    .theme-btn {
-      width: 36px; height: 36px;
-      background: var(--s2); border: 1px solid var(--border);
-      border-radius: var(--rsm); color: var(--t2);
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 16px; transition: all .15s;
-    }
-    .theme-btn:hover { background: var(--s3); color: var(--text); }
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:30; display:none; align-items:flex-end; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--bg); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; display:flex; flex-direction:column; gap:12px; padding-bottom:calc(20px + var(--safe-bot)); border-top:1px solid var(--border2); }
+    .modal-hdr { display:flex; align-items:center; justify-content:space-between; }
+    .modal-title { font-size:15px; font-weight:700; }
+    .modal-close { background:none; border:none; color:var(--t2); font-size:18px; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:6px; }
+    .modal-close:hover { background:var(--s2); }
+    .checkbox-row { display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer; padding:4px 0; }
+    .checkbox-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--lime); cursor:pointer; flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -333,40 +229,34 @@
   <div class="topbar">
     <div class="app-title">Money</div>
     <div class="topbar-right">
-      <button class="icon-btn" id="btn-sync" title="Sync ke Google Sheets">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      <button class="icon-btn" id="btn-sync">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
         <span class="sync-dot" id="sync-dot"></span>
       </button>
-      <button class="theme-btn" id="btn-theme" title="Ganti tema">🌙</button>
+      <button class="theme-btn" id="btn-theme">🌙</button>
       <button class="icon-btn" id="btn-settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93a10 10 0 0 0 14.14 14.14"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93a10 10 0 0 0 14.14 14.14"/></svg>
       </button>
     </div>
   </div>
 
   <div id="main">
-    <!-- Page: Beranda -->
+    <!-- Beranda -->
     <div class="page active" id="page-beranda">
       <div class="balance-section">
         <div class="balance-label">Saldo Bersih</div>
         <div class="balance-amount" id="balance-val">Rp 0</div>
         <div class="mini-cards">
-          <div class="mini-card income">
-            <div class="mc-label">▲ Pemasukan</div>
-            <div class="mc-val" id="total-in">Rp 0</div>
-          </div>
-          <div class="mini-card expense">
-            <div class="mc-label">▼ Pengeluaran</div>
-            <div class="mc-val" id="total-out">Rp 0</div>
-          </div>
+          <div class="mini-card income"><div class="mc-label">▲ Pemasukan</div><div class="mc-val" id="total-in">Rp 0</div></div>
+          <div class="mini-card expense"><div class="mc-label">▼ Pengeluaran</div><div class="mc-val" id="total-out">Rp 0</div></div>
         </div>
       </div>
-
-      <div class="section" style="margin-top:20px">
+      <div class="section" style="margin-top:16px">
         <div class="section-title">Catat Transaksi</div>
         <div class="type-toggle">
           <button class="type-btn active expense" data-t="expense" id="tbtn-expense">Pengeluaran</button>
           <button class="type-btn income" data-t="income" id="tbtn-income">Pemasukan</button>
+          <button class="type-btn transfer" data-t="transfer" id="tbtn-transfer">Transfer</button>
         </div>
         <div class="input-row">
           <div class="input-wrap" style="flex:1.5">
@@ -375,18 +265,47 @@
           </div>
           <input type="date" id="inp-date" style="flex:1"/>
         </div>
-        <div class="cat-grid" id="cat-grid"></div>
-        <input type="text" id="inp-note" placeholder="Catatan (opsional)…" style="margin-bottom:12px"/>
+        <div id="cat-section">
+          <div class="cat-grid" id="cat-grid"></div>
+        </div>
+        <div id="wallet-single-row" class="wallet-row">
+          <label>Dompet</label>
+          <select id="inp-wallet"><option value="">-- Tanpa Dompet --</option></select>
+        </div>
+        <div id="wallet-transfer-rows" style="display:none">
+          <div class="wallet-row">
+            <label>Dari</label>
+            <select id="inp-wallet-from"><option value="">-- Pilih --</option></select>
+          </div>
+          <div class="wallet-row">
+            <label>Ke</label>
+            <select id="inp-wallet-to"><option value="">-- Pilih --</option></select>
+          </div>
+        </div>
+        <input type="text" id="inp-note" placeholder="Catatan (opsional)…" style="margin-bottom:10px"/>
         <button class="btn-save expense" id="btn-save">+ Simpan Pengeluaran</button>
       </div>
-
-      <div class="section" style="margin-top:20px; padding-bottom:10px">
+      <div class="section" style="margin-top:16px;padding-bottom:10px">
         <div class="section-title">Transaksi Terbaru</div>
         <div class="tx-list" id="recent-list"></div>
       </div>
     </div>
 
-    <!-- Page: Riwayat -->
+    <!-- Dompet -->
+    <div class="page" id="page-dompet">
+      <div class="wallet-summary">
+        <div class="wallet-total-card">
+          <div><div class="wtc-label">Total Dihitung</div><div class="wtc-val" id="w-total-counted">Rp 0</div></div>
+          <div><div class="wtc-label">Semua Dompet</div><div class="wtc-val" id="w-total-all">Rp 0</div></div>
+        </div>
+      </div>
+      <div class="wallet-cats" id="wallet-cats-list"></div>
+      <div style="padding:0 20px 16px">
+        <button class="btn-primary" id="btn-add-wallet-cat">+ Tambah Kategori Dompet</button>
+      </div>
+    </div>
+
+    <!-- Riwayat -->
     <div class="page" id="page-riwayat">
       <div class="section">
         <div class="filter-bar">
@@ -397,17 +316,46 @@
       </div>
     </div>
 
-    <!-- Page: Laporan -->
+    <!-- Laporan -->
     <div class="page" id="page-laporan">
       <div class="section">
-        <div class="chart-wrap">
-          <div class="chart-sub">Pengeluaran per Kategori</div>
-          <canvas id="c-pie" height="180"></canvas>
-          <div class="legend" id="pie-legend"></div>
+        <!-- Chart selector tabs -->
+        <div class="chart-tabs" id="chart-tabs">
+          <button class="chart-tab active" data-chart="expense-pie">📉 Pengeluaran</button>
+          <button class="chart-tab" data-chart="income-pie">📈 Pemasukan</button>
+          <button class="chart-tab" data-chart="wallet-pie">🏦 Dompet</button>
+          <button class="chart-tab" data-chart="cashflow">💹 Arus Kas</button>
         </div>
-        <div class="chart-wrap">
-          <div class="chart-sub">Arus Kas 6 Bulan Terakhir</div>
-          <canvas id="c-bar" height="150"></canvas>
+        <!-- Chart: Pengeluaran per kategori -->
+        <div class="chart-panel active" id="chart-expense-pie">
+          <div class="chart-wrap">
+            <div class="chart-sub">Pengeluaran per Kategori</div>
+            <canvas id="c-pie-expense" height="180"></canvas>
+            <div class="legend" id="legend-expense"></div>
+          </div>
+        </div>
+        <!-- Chart: Pemasukan per kategori -->
+        <div class="chart-panel" id="chart-income-pie">
+          <div class="chart-wrap">
+            <div class="chart-sub">Pemasukan per Kategori</div>
+            <canvas id="c-pie-income" height="180"></canvas>
+            <div class="legend" id="legend-income"></div>
+          </div>
+        </div>
+        <!-- Chart: Dompet -->
+        <div class="chart-panel" id="chart-wallet-pie">
+          <div class="chart-wrap">
+            <div class="chart-sub">Distribusi Dompet</div>
+            <canvas id="c-pie-wallet" height="180"></canvas>
+            <div class="legend" id="legend-wallet"></div>
+          </div>
+        </div>
+        <!-- Chart: Arus Kas -->
+        <div class="chart-panel" id="chart-cashflow">
+          <div class="chart-wrap">
+            <div class="chart-sub">Arus Kas 6 Bulan Terakhir</div>
+            <canvas id="c-bar" height="150"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -416,15 +364,19 @@
   <!-- Bottom Nav -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-page="beranda">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Beranda
     </button>
+    <button class="nav-btn" data-page="dompet">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z"/><circle cx="16" cy="14" r="1.5" fill="currentColor"/></svg>
+      Dompet
+    </button>
     <button class="nav-btn" data-page="riwayat">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Riwayat
     </button>
     <button class="nav-btn" data-page="laporan">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Laporan
     </button>
   </nav>
@@ -438,9 +390,9 @@
     <div class="panel-body">
       <div>
         <div class="field-label">Tema Tampilan</div>
-        <div style="display:flex; gap:8px; margin-top:4px;">
-          <button id="theme-dark" style="flex:1; padding:10px; border-radius:var(--rsm); border:2px solid var(--border); background:var(--s2); color:var(--text); font-family:'Syne',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s;">🌙 Dark</button>
-          <button id="theme-light" style="flex:1; padding:10px; border-radius:var(--rsm); border:2px solid var(--border); background:var(--s2); color:var(--text); font-family:'Syne',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s;">☀️ Light</button>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button id="theme-dark" style="flex:1;padding:9px;border-radius:var(--rsm);border:2px solid var(--border);background:var(--s2);color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">🌙 Dark</button>
+          <button id="theme-light" style="flex:1;padding:9px;border-radius:var(--rsm);border:2px solid var(--border);background:var(--s2);color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">☀️ Light</button>
         </div>
       </div>
       <hr class="divider"/>
@@ -451,22 +403,70 @@
       <div>
         <div class="field-label">Google Apps Script URL</div>
         <input type="text" id="inp-scripturl" placeholder="https://script.google.com/macros/s/.../exec"/>
-        <div class="field-hint">
-          Buat via Google Sheets → <code>Extensions → Apps Script → Deploy → Web App</code><br>
-          Pastikan <code>Who has access</code> diset ke <code>Anyone</code>
-        </div>
+        <div class="field-hint">Buat via Google Sheets → <code>Extensions → Apps Script → Deploy → Web App</code></div>
       </div>
       <button class="btn-primary" id="btn-save-settings">Simpan & Hubungkan</button>
       <hr class="divider"/>
-      <button class="btn-primary" id="btn-load-sheets" style="margin-top:8px;background:var(--mint);color:#0d0d10;">↓ Muat Data dari Sheets</button>
-      <button class="btn-ghost" id="btn-export-csv" style="margin-top:8px">Export CSV</button>
-      <button class="btn-ghost" id="btn-clear" style="margin-top:8px">Hapus Semua Data Lokal</button>
+      <button class="btn-primary" id="btn-load-sheets" style="background:var(--mint);color:#0d0d10">↓ Muat Data dari Sheets</button>
+      <button class="btn-danger" id="btn-export-csv">Export CSV</button>
+      <button class="btn-danger" id="btn-clear">Hapus Semua Data Lokal</button>
+    </div>
+  </div>
+
+  <!-- Modal: Kategori Dompet -->
+  <div class="modal-overlay" id="modal-wcat">
+    <div class="modal">
+      <div class="modal-hdr">
+        <div class="modal-title" id="modal-wcat-title">Tambah Kategori Dompet</div>
+        <button class="modal-close" id="close-modal-wcat">✕</button>
+      </div>
+      <div><div class="field-label">Nama Kategori</div><input type="text" id="wcat-name" placeholder="Tabungan, E-Wallet, Investasi..."/></div>
+      <div><div class="field-label">Icon Emoji</div><input type="text" id="wcat-icon" placeholder="🏦" maxlength="4"/></div>
+      <input type="hidden" id="wcat-edit-id"/>
+      <button class="btn-primary" id="btn-save-wcat">Simpan Kategori</button>
+    </div>
+  </div>
+
+  <!-- Modal: Item Dompet -->
+  <div class="modal-overlay" id="modal-witem">
+    <div class="modal">
+      <div class="modal-hdr">
+        <div class="modal-title" id="modal-witem-title">Tambah Dompet</div>
+        <button class="modal-close" id="close-modal-witem">✕</button>
+      </div>
+      <div><div class="field-label">Nama Dompet</div><input type="text" id="witem-name" placeholder="BCA, GoPay, Reksa Dana..."/></div>
+      <div>
+        <div class="field-label">Saldo Awal (Rp)</div>
+        <div class="input-wrap"><span class="input-prefix">Rp</span><input type="number" id="witem-balance" class="has-prefix" placeholder="0" min="0"/></div>
+      </div>
+      <label class="checkbox-row"><input type="checkbox" id="witem-counted" checked/> Dihitung ke saldo bersih</label>
+      <input type="hidden" id="witem-cat-id"/>
+      <input type="hidden" id="witem-edit-id"/>
+      <button class="btn-primary" id="btn-save-witem">Simpan Dompet</button>
+    </div>
+  </div>
+
+  <!-- Modal: Sesuaikan Saldo -->
+  <div class="modal-overlay" id="modal-adjust">
+    <div class="modal">
+      <div class="modal-hdr">
+        <div class="modal-title">Sesuaikan Saldo</div>
+        <button class="modal-close" id="close-modal-adjust">✕</button>
+      </div>
+      <div><div class="field-label">Dompet</div><div id="adjust-wallet-name" style="font-size:14px;font-weight:600;padding:6px 0"></div></div>
+      <div><div class="field-label">Saldo Saat Ini</div><div id="adjust-wallet-current" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--lime);padding:4px 0"></div></div>
+      <div>
+        <div class="field-label">Saldo Baru (Rp)</div>
+        <div class="input-wrap"><span class="input-prefix">Rp</span><input type="number" id="adjust-new-balance" class="has-prefix" placeholder="0" min="0"/></div>
+      </div>
+      <div><div class="field-label">Tanggal</div><input type="date" id="adjust-date"/></div>
+      <input type="hidden" id="adjust-wallet-id"/>
+      <button class="btn-primary" id="btn-save-adjust">Simpan & Catat Selisih</button>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 </div>
-
 <script src="app.js"></script>
 </body>
 </html>
