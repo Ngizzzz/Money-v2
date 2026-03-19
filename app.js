@@ -1925,11 +1925,13 @@ function setupColResizer(resizerId, leftColId, rightColId) {
   const rightCol = document.getElementById(rightColId);
   if (!resizer || !leftCol || !rightCol) return;
 
-  // Restore saved widths
+  // Restore saved widths (col-3 always flex:1)
   const savedL = localStorage.getItem('col-w-'+leftColId);
-  const savedR = localStorage.getItem('col-w-'+rightColId);
-  if (savedL) leftCol.style.flex  = '0 0 ' + savedL;
-  if (savedR) rightCol.style.flex = '0 0 ' + savedR;
+  if (savedL) leftCol.style.flex = '0 0 ' + savedL;
+  if (rightColId !== 'bcol-3') {
+    const savedR = localStorage.getItem('col-w-'+rightColId);
+    if (savedR) rightCol.style.flex = '0 0 ' + savedR;
+  }
 
   let startX, startLW, startRW;
 
@@ -1944,10 +1946,12 @@ function setupColResizer(resizerId, leftColId, rightColId) {
     const onMove = e => {
       const delta = e.clientX - startX;
       const newLW = Math.max(180, startLW + delta);
-      const newRW = Math.max(180, startRW - delta);
-      leftCol.style.flex  = '0 0 ' + newLW + 'px';
-      rightCol.style.flex = '0 0 ' + newRW + 'px';
-      // Re-render chart after resize
+      leftCol.style.flex = '0 0 ' + newLW + 'px';
+      // Col-3 always fills remaining space (flex:1)
+      if (rightColId !== 'bcol-3') {
+        const newRW = Math.max(180, startRW - delta);
+        rightCol.style.flex = '0 0 ' + newRW + 'px';
+      }
       if (rightColId === 'bcol-3') renderHomePie();
     };
     const onUp = () => {
