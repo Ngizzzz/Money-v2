@@ -120,10 +120,14 @@ function updateBalance() {
   }
 
   const el = document.getElementById('balance-val');
-  el.textContent = (bal<0?'- ':'')+fmt(bal);
-  el.classList.toggle('negative', bal<0);
-  document.getElementById('total-in').textContent  = fmt(inc);
-  document.getElementById('total-out').textContent = fmt(exp);
+  if (el) { el.textContent = (bal<0?'- ':'')+fmt(bal); el.classList.toggle('negative', bal<0); }
+  const ti = document.getElementById('total-in');
+  const to = document.getElementById('total-out');
+  if (ti) ti.textContent = fmt(inc);
+  if (to) to.textContent = fmt(exp);
+
+  // Update desktop balance jika di desktop
+  if (typeof isDesktop === 'function' && isDesktop()) updateDesktopBalance();
 }
 
 // ─── Wallet helpers ───────────────────────────────────────────
@@ -1833,17 +1837,6 @@ function renderBarInto(canvasId) {
 function syncDesktopButtons() {
   // Mirror theme button state
   const origApply = applyTheme;
-}
-
-// ─── Hook into existing updateBalance ────────────────────────
-const _origUpdateBalance = updateBalance;
-window._updateBalanceHooked = true;
-
-// Override updateBalance to also update desktop
-const __origUpdateBalance = updateBalance;
-function updateBalance() {
-  __origUpdateBalance();
-  updateDesktopBalance();
 }
 
 // ─── Hook into loadFromSheets to also update desktop ─────────
