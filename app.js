@@ -47,13 +47,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   if (cfg.scriptUrl) await loadFromSheets();
   setInterval(async () => {
-    if (cfg.scriptUrl) {
+    if (cfg.scriptUrl && !modalOpen) {
       console.log('[Money] auto-refresh:', new Date().toLocaleTimeString());
       await loadFromSheets();
     }
   }, 15000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.scriptUrl) loadFromSheets(); });
-  window.addEventListener('focus', () => { if (cfg.scriptUrl) loadFromSheets(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.scriptUrl && !modalOpen) loadFromSheets(); });
+  window.addEventListener('focus', () => { if (cfg.scriptUrl && !modalOpen) loadFromSheets(); });
 });
 
 // ─── Cookie helpers ───────────────────────────────────────────
@@ -235,6 +235,7 @@ async function saveTransaction() {
   if (!amount || amount<=0) return toast('Masukkan jumlah yang valid','error');
   if (!date) return toast('Pilih tanggal','error');
   if (currentType !== 'transfer' && !selectedCat) return toast('Pilih kategori','error');
+  if (currentType !== 'transfer' && !walletId) return toast('Pilih dompet','error');
   if (currentType === 'transfer' && (!wFrom || !wTo)) return toast('Pilih dompet asal & tujuan','error');
   if (currentType === 'transfer' && wFrom===wTo) return toast('Dompet asal & tujuan harus berbeda','error');
 
@@ -383,15 +384,22 @@ function renderWalletPage() {
     </div>`;
   }).join('');
 
-  // Toggle expand/collapse
+  // Toggle expand/collapse — tetap terbuka sampai diklik lagi
   container.querySelectorAll('.wallet-cat-hdr').forEach(hdr => {
     hdr.addEventListener('click', e => {
       if (e.target.closest('button')) return;
       const id    = hdr.dataset.catid;
       const items = document.getElementById('wcat-items-'+id);
       const tog   = hdr.querySelector('.wcat-toggle');
-      items.classList.toggle('open');
-      tog.classList.toggle('open');
+      const isOpen = items.classList.contains('open');
+      // Tutup semua dulu
+      container.querySelectorAll('.wallet-items').forEach(el => el.classList.remove('open'));
+      container.querySelectorAll('.wcat-toggle').forEach(el => el.classList.remove('open'));
+      // Kalau sebelumnya tertutup, buka yang ini
+      if (!isOpen) {
+        items.classList.add('open');
+        tog.classList.add('open');
+      }
     });
   });
 
@@ -437,6 +445,17 @@ function renderWalletPage() {
 }
 
 // ─── Modals ───────────────────────────────────────────────────
+// Toggle counted button
+function setCountedToggle(val) {
+  const hiddenInput = document.getElementById('witem-counted');
+  const yesBtn = document.getElementById('witem-counted-yes');
+  const noBtn  = document.getElementById('witem-counted-no');
+  if (!hiddenInput) return;
+  hiddenInput.value = val ? 'true' : 'false';
+  yesBtn.className = 'toggle-btn' + (val  ? ' active yes-btn' : '');
+  noBtn.className  = 'toggle-btn' + (!val ? ' active no-btn'  : '');
+}
+
 function setupModals() {
   btn('close-modal-wcat',   () => closeModal('modal-wcat'));
   btn('close-modal-witem',  () => closeModal('modal-witem'));
@@ -448,8 +467,16 @@ function setupModals() {
     m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); })
   );
 }
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+let modalOpen = false;
+function openModal(id)  {
+  document.getElementById(id).classList.add('open');
+  modalOpen = true;
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Cek apakah masih ada modal lain yang terbuka
+  modalOpen = document.querySelectorAll('.modal-overlay.open').length > 0;
+}
 
 function openModalWcat(editId='') {
   document.getElementById('wcat-edit-id').value = editId;
@@ -489,12 +516,12 @@ function openModalWitem(catId, editId='') {
     const item = findWalletItem(editId);
     document.getElementById('witem-name').value    = item?.name||'';
     document.getElementById('witem-balance').value = item?.initialBalance||0;
-    document.getElementById('witem-counted').checked = item?.counted!==false;
+    setCountedToggle(item?.counted !== false);
     document.getElementById('modal-witem-title').textContent = 'Edit Dompet';
   } else {
     document.getElementById('witem-name').value    = '';
     document.getElementById('witem-balance').value = '';
-    document.getElementById('witem-counted').checked = true;
+    setCountedToggle(true);
     document.getElementById('modal-witem-title').textContent = 'Tambah Dompet';
   }
   openModal('modal-witem');
@@ -504,7 +531,7 @@ function saveWalletItem() {
   const editId = document.getElementById('witem-edit-id').value;
   const name   = document.getElementById('witem-name').value.trim();
   const bal    = parseFloat(document.getElementById('witem-balance').value) || 0;
-  const counted= document.getElementById('witem-counted').checked;
+  const counted= document.getElementById('witem-counted').value !== 'false';
   if (!name) return toast('Masukkan nama dompet','error');
   const cat = wallets.find(c=>c.id===catId);
   if (!cat) return;
@@ -524,12 +551,18 @@ function openModalAdjust(walletId) {
   const item = findWalletItem(walletId);
   if (!item) return;
   const currentBal = calcWalletBalance(item);
-  document.getElementById('adjust-wallet-id').value       = walletId;
-  document.getElementById('adjust-wallet-name').textContent     = item.name;
-  document.getElementById('adjust-wallet-current').textContent  = fmt(currentBal);
-  document.getElementById('adjust-new-balance').value     = Math.round(currentBal);
-  document.getElementById('adjust-date').value            = new Date().toISOString().split('T')[0];
+  document.getElementById('adjust-wallet-id').value            = walletId;
+  document.getElementById('adjust-wallet-name').textContent    = item.name;
+  document.getElementById('adjust-wallet-current').textContent = fmt(currentBal);
+  // Prefill dengan saldo sekarang — user tinggal ubah ke nilai baru
+  document.getElementById('adjust-new-balance').value = Math.round(currentBal);
+  document.getElementById('adjust-date').value        = new Date().toISOString().split('T')[0];
   openModal('modal-adjust');
+  // Fokus ke input agar mudah diedit
+  setTimeout(() => {
+    const inp = document.getElementById('adjust-new-balance');
+    if (inp) { inp.focus(); inp.select(); }
+  }, 300);
 }
 function saveAdjustBalance() {
   const walletId  = document.getElementById('adjust-wallet-id').value;
