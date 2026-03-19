@@ -1310,17 +1310,51 @@ function updateDesktopBalance() {
     ? countedItems.reduce((s, item) => s + calcWalletBalance(item), 0)
     : inc - exp;
 
-  const el = document.getElementById('d-balance-val');
-  if (el) { el.textContent = (bal<0?'- ':'')+fmt(bal); el.classList.toggle('negative', bal<0); }
+  // Summary cards on beranda
+  const elBal = document.getElementById('d-balance-val');
+  if (elBal) {
+    elBal.textContent = (bal<0?'- ':'')+fmt(bal);
+    elBal.classList.toggle('negative', bal<0);
+  }
   const ti = document.getElementById('d-total-in');
   const to = document.getElementById('d-total-out');
   if (ti) ti.textContent = fmt(inc);
   if (to) to.textContent = fmt(exp);
 
-  // Sync dot
+  // Conn label in sidebar footer
   const cl = document.getElementById('d-conn-label');
-  if (cl) cl.textContent = cfg.scriptUrl ? '● Terhubung' : 'Belum terhubung';
-  if (cl) cl.style.color = cfg.scriptUrl ? 'var(--mint)' : 'var(--t3)';
+  if (cl) { cl.textContent = cfg.scriptUrl ? '● Terhubung' : 'Belum terhubung'; cl.style.color = cfg.scriptUrl ? 'var(--mint)' : 'var(--t3)'; }
+
+  // Render home pie chart
+  renderHomePie();
+}
+
+function renderHomePie() {
+  const canvas = document.getElementById('d-home-pie'); if (!canvas) return;
+  const W = canvas.offsetWidth || 300; canvas.width = W;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,200);
+  const legend = document.getElementById('d-home-legend');
+  const exp = txs.filter(t=>t.type==='expense');
+  const totals = {}; exp.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
+  const labels = Object.keys(totals), data = Object.values(totals);
+  const total = data.reduce((a,b)=>a+b,0);
+  if (!total) {
+    ctx.fillStyle='#4a4858'; ctx.font='12px Syne'; ctx.textAlign='center';
+    ctx.fillText('Belum ada pengeluaran', W/2, 100);
+    if (legend) legend.innerHTML=''; return;
+  }
+  const cx=W/2, cy=95, r=72; let angle=-Math.PI/2;
+  data.forEach((v,i)=>{
+    const slice=(v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fill(); angle+=slice;
+  });
+  const bgC = document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
+  ctx.fillStyle='#eeeae2'; ctx.textAlign='center'; ctx.font='500 11px Syne'; ctx.fillText('Keluar',cx,cy-5);
+  ctx.font='500 12px JetBrains Mono'; ctx.fillStyle='#f54e6a';
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
+  if (legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l} (${Math.round(data[i]/total*100)}%)</div>`).join('');
 }
 
 // ─── Desktop Form ─────────────────────────────────────────────
@@ -1445,6 +1479,7 @@ function renderDesktopRecent() {
   if (!el) return;
   const sorted = [...txs].sort((a,b)=>b.date!==a.date?b.date.localeCompare(a.date):b.id.localeCompare(a.id));
   renderTxListInto(el, sorted.slice(0,8));
+  renderHomePie();
 }
 
 // ─── Desktop History ──────────────────────────────────────────
