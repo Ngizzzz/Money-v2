@@ -328,10 +328,23 @@ function populateFilters() {
 }
 function renderTxList(container, list) {
   if (!list.length) { container.innerHTML='<div class="empty">Belum ada transaksi.</div>'; return; }
-  container.innerHTML = list.map(tx => {
+  let html = '';
+  let lastMonth = '';
+  list.forEach(tx => {
+    const month = tx.date.slice(0,7);
+    if (month !== lastMonth) {
+      const monthTotal = list
+        .filter(t => t.date.startsWith(month))
+        .reduce((s,t) => t.type==='expense' ? s-t.amount : t.type==='income' ? s+t.amount : s, 0);
+      html += `<div class="tx-month-separator">
+        <span class="tx-month-label">${fmtMon(month)}</span>
+        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':''}${fmt(monthTotal)}</span>
+      </div>`;
+      lastMonth = month;
+    }
     const walletLabel = tx.type==='transfer' ? '' :
       (tx.walletId ? ` · ${findWalletItem(tx.walletId)?.name||''}` : '');
-    return `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
+    html += `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
       <div class="tx-ico ${tx.type}">${tx.icon||'📦'}</div>
       <div class="tx-body">
         <div class="tx-cat">${tx.label}</div>
@@ -343,8 +356,8 @@ function renderTxList(container, list) {
       </div>
       <button class="tx-del" data-id="${tx.id}" title="Hapus">✕</button>
     </div>`;
-  }).join('');
-  // Click on tx item to view/edit
+  });
+  container.innerHTML = html;
   container.querySelectorAll('.tx-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('.tx-del')) return;
@@ -391,7 +404,7 @@ function renderWalletPage() {
           <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
           <div class="wallet-cat-info">
             <div class="wallet-cat-name">${cat.name}</div>
-            <div class="wallet-cat-total">${fmt(catTotal)}</div>
+            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}% dari total</span></div>
           </div>
         </div>
         <div class="wallet-cat-actions">
@@ -1594,9 +1607,22 @@ function populateDesktopFilters() {
 
 function renderTxListInto(container, list) {
   if (!list.length) { container.innerHTML='<div class="empty">Belum ada transaksi.</div>'; return; }
-  container.innerHTML = list.map(tx => {
+  let html = '';
+  let lastMonth = '';
+  list.forEach(tx => {
+    const month = tx.date.slice(0,7);
+    if (month !== lastMonth) {
+      const monthTotal = list
+        .filter(t => t.date.startsWith(month))
+        .reduce((s,t) => t.type==='expense'?s-t.amount:t.type==='income'?s+t.amount:s, 0);
+      html += `<div class="tx-month-separator">
+        <span class="tx-month-label">${fmtMon(month)}</span>
+        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':''}${fmt(monthTotal)}</span>
+      </div>`;
+      lastMonth = month;
+    }
     const wLabel = tx.type==='transfer' ? '' : (tx.walletId ? ` · ${findWalletItem(tx.walletId)?.name||''}` : '');
-    return `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
+    html += `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
       <div class="tx-ico ${tx.type}">${tx.icon||'📦'}</div>
       <div class="tx-body">
         <div class="tx-cat">${tx.label}</div>
@@ -1608,7 +1634,8 @@ function renderTxListInto(container, list) {
       </div>
       <button class="tx-del" data-id="${tx.id}">✕</button>
     </div>`;
-  }).join('');
+  });
+  container.innerHTML = html;
   container.querySelectorAll('.tx-item').forEach(item => {
     item.addEventListener('click', e => { if(e.target.closest('.tx-del')) return; openEditTx(item.dataset.txId); });
   });
@@ -1656,7 +1683,7 @@ function renderDesktopWallet() {
           <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
           <div class="wallet-cat-info">
             <div class="wallet-cat-name">${cat.name}</div>
-            <div class="wallet-cat-total">${fmt(catTotal)}</div>
+            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}% dari total</span></div>
           </div>
         </div>
         <div class="wallet-cat-actions">
@@ -1725,6 +1752,8 @@ function renderDesktopWallet() {
 }
 
 // ─── Desktop Charts ───────────────────────────────────────────
+let activeDesktopChart = 'expense';
+
 function setupDesktopLaporan() {
   // Filter tabs
   document.querySelectorAll('#dpage-laporan .lf-tab').forEach(tab=>{
@@ -1742,6 +1771,29 @@ function setupDesktopLaporan() {
   const dt=document.getElementById('d-laporan-date-to');
   if(df) df.addEventListener('change',()=>{ laporanDateFrom=df.value; renderDesktopCharts(); });
   if(dt) dt.addEventListener('change',()=>{ laporanDateTo=dt.value; renderDesktopCharts(); });
+
+  // Donut card click
+  document.querySelectorAll('.laporan-donut-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      activeDesktopChart = card.dataset.dchart;
+      document.querySelectorAll('.laporan-donut-card').forEach(c=>c.classList.remove('active'));
+      card.classList.add('active');
+      renderDesktopExpandedChart();
+    });
+  });
+}
+
+function renderDesktopExpandedChart() {
+  const canvas = document.getElementById('d-c-pie-expanded');
+  const legend = document.getElementById('d-legend-expanded');
+  if (!canvas) return;
+  const W = canvas.offsetWidth || 280;
+  canvas.width = W; canvas.height = 260;
+  if (activeDesktopChart === 'wallet') {
+    renderWalletDonutInto('d-c-pie-expanded', 'd-legend-expanded');
+  } else {
+    renderDonutInto(activeDesktopChart, 'd-c-pie-expanded', 'd-legend-expanded');
+  }
 }
 
 function updateDesktopLaporanInfo() {
@@ -1761,6 +1813,7 @@ function renderDesktopCharts() {
   renderDonutInto('income', 'd-c-pie-income', 'd-legend-income');
   renderWalletDonutInto('d-c-pie-wallet','d-legend-wallet');
   renderBarInto('d-c-bar');
+  renderDesktopExpandedChart();
 }
 
 function renderDonutInto(type, canvasId, legendId) {
