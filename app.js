@@ -930,8 +930,7 @@ function setupSettings() {
   updateThemeButtons(localStorage.getItem('theme')||'dark');
 }
 function openSettings() {
-  const panel = document.getElementById('settings-panel');
-  panel.classList.add('open');
+  document.getElementById('settings-panel').classList.add('open');
 }
 function closeSettings() {
   document.getElementById('settings-panel').classList.remove('open');
