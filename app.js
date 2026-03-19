@@ -105,8 +105,18 @@ function calcWalletBalance(item) {
 function updateBalance() {
   const inc  = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp  = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const bal  = inc - exp;
-  const el   = document.getElementById('balance-val');
+
+  // Saldo bersih = total saldo dompet yang dihitung (jika ada dompet)
+  // Jika belum ada dompet, gunakan inc - exp
+  let bal;
+  const countedItems = wallets.flatMap(cat => cat.items.filter(i => i.counted !== false));
+  if (countedItems.length > 0) {
+    bal = countedItems.reduce((s, item) => s + calcWalletBalance(item), 0);
+  } else {
+    bal = inc - exp;
+  }
+
+  const el = document.getElementById('balance-val');
   el.textContent = (bal<0?'- ':'')+fmt(bal);
   el.classList.toggle('negative', bal<0);
   document.getElementById('total-in').textContent  = fmt(inc);
@@ -279,7 +289,11 @@ async function saveTransaction() {
 
 // ─── Render helpers ───────────────────────────────────────────
 function renderRecent() {
-  renderTxList(document.getElementById('recent-list'), txs.slice(0,5));
+  const sorted = [...txs].sort((a,b) => {
+    if (b.date !== a.date) return b.date.localeCompare(a.date);
+    return b.id.localeCompare(a.id);
+  });
+  renderTxList(document.getElementById('recent-list'), sorted.slice(0,5));
 }
 function renderHistory() {
   populateFilters();
@@ -288,6 +302,11 @@ function renderHistory() {
   let list    = [...txs];
   if (month) list = list.filter(t=>t.date.startsWith(month));
   if (cat)   list = list.filter(t=>t.category===cat||t.type===cat);
+  // Urutkan dari terbaru ke terlama
+  list.sort((a,b) => {
+    if (b.date !== a.date) return b.date.localeCompare(a.date);
+    return b.id.localeCompare(a.id); // jika tanggal sama, urut by ID (waktu input)
+  });
   renderTxList(document.getElementById('history-list'), list);
   document.getElementById('f-month').onchange = renderHistory;
   document.getElementById('f-cat').onchange   = renderHistory;
@@ -863,9 +882,9 @@ async function syncWalletsToSheets() {
 }
 
 // Sync wallet balances setiap kali transaksi berubah
-function syncWalletBalancesAfterTx() {
+async function syncWalletBalancesAfterTx() {
   if (cfg.scriptUrl && wallets.length) {
-    setTimeout(() => syncWalletsToSheets(), 1000);
+    await syncWalletsToSheets();
   }
 }
 
