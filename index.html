@@ -444,14 +444,38 @@
       }
       .beranda-left, .beranda-right { display: flex; flex-direction: column; gap: 16px; }
 
-      /* Laporan: all charts visible */
-      .laporan-grid {
+      /* Laporan desktop: donut row + bar */
+      .laporan-donut-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
       }
-      .laporan-grid .chart-wrap { margin-bottom: 0; }
-      .laporan-full { grid-column: 1 / -1; }
+      .laporan-donut-card {
+        background: var(--s1); border: 1px solid var(--border);
+        border-radius: var(--r); padding: 14px;
+        cursor: pointer; transition: all .2s;
+        position: relative;
+      }
+      .laporan-donut-card:hover { border-color: var(--border2); background: var(--s2); }
+      .laporan-donut-card.active { border-color: var(--lime); background: var(--lime-d); }
+      .laporan-donut-card.active::after {
+        content: '▼';
+        position: absolute; bottom: -10px; left: 50%;
+        transform: translateX(-50%);
+        color: var(--lime); font-size: 12px;
+      }
+      .ldc-title { font-size: 11px; font-weight: 700; color: var(--t2); margin-bottom: 8px; }
+      .laporan-donut-card.active .ldc-title { color: var(--lime); }
+      .laporan-expanded {
+        background: var(--s1); border: 1px solid var(--lime);
+        border-radius: var(--r); padding: 20px;
+        margin-bottom: 14px; display: flex;
+        align-items: center; gap: 20px;
+      }
+      .laporan-expanded canvas { flex-shrink: 0; }
+      .laporan-expanded .legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+      .laporan-expanded .leg-item { font-size: 12px; }
 
       /* Riwayat: wider table */
       .tx-item { padding: 12px 16px; }
@@ -988,26 +1012,33 @@
           </div>
           <div class="laporan-filter-info" id="d-laporan-filter-info"></div>
         </div>
-        <div class="laporan-grid">
-          <div class="chart-wrap">
-            <div class="chart-sub">Pengeluaran per Kategori</div>
-            <canvas id="d-c-pie-expense" height="180"></canvas>
+        <!-- Row 1: 3 donut charts (clickable to expand) -->
+        <div class="laporan-donut-row">
+          <div class="laporan-donut-card active" data-dchart="expense" id="dcard-expense">
+            <div class="ldc-title">📉 Pengeluaran</div>
+            <canvas id="d-c-pie-expense" height="160"></canvas>
             <div class="legend" id="d-legend-expense"></div>
           </div>
-          <div class="chart-wrap">
-            <div class="chart-sub">Pemasukan per Kategori</div>
-            <canvas id="d-c-pie-income" height="180"></canvas>
+          <div class="laporan-donut-card" data-dchart="income" id="dcard-income">
+            <div class="ldc-title">📈 Pemasukan</div>
+            <canvas id="d-c-pie-income" height="160"></canvas>
             <div class="legend" id="d-legend-income"></div>
           </div>
-          <div class="chart-wrap">
-            <div class="chart-sub">Distribusi Dompet</div>
-            <canvas id="d-c-pie-wallet" height="180"></canvas>
+          <div class="laporan-donut-card" data-dchart="wallet" id="dcard-wallet">
+            <div class="ldc-title">🏦 Dompet</div>
+            <canvas id="d-c-pie-wallet" height="160"></canvas>
             <div class="legend" id="d-legend-wallet"></div>
           </div>
-          <div class="chart-wrap">
-            <div class="chart-sub">Arus Kas 6 Bulan Terakhir</div>
-            <canvas id="d-c-bar" height="180"></canvas>
-          </div>
+        </div>
+        <!-- Expanded chart detail -->
+        <div class="laporan-expanded" id="laporan-expanded">
+          <canvas id="d-c-pie-expanded" height="260"></canvas>
+          <div class="legend" id="d-legend-expanded"></div>
+        </div>
+        <!-- Row 2: Bar chart full width -->
+        <div class="chart-wrap" style="margin-top:16px">
+          <div class="chart-sub">💹 Arus Kas 6 Bulan Terakhir</div>
+          <canvas id="d-c-bar" height="160"></canvas>
         </div>
       </div>
 
