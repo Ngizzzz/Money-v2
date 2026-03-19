@@ -451,6 +451,7 @@
         gap: 14px;
         margin-bottom: 14px;
       }
+      #dcard-cashflow { grid-column: 1 / -1; }
       .laporan-donut-card {
         background: var(--s1); border: 1px solid var(--border);
         border-radius: var(--r); padding: 14px;
@@ -467,15 +468,7 @@
       }
       .ldc-title { font-size: 11px; font-weight: 700; color: var(--t2); margin-bottom: 8px; }
       .laporan-donut-card.active .ldc-title { color: var(--lime); }
-      .laporan-expanded {
-        background: var(--s1); border: 1px solid var(--lime);
-        border-radius: var(--r); padding: 20px;
-        margin-bottom: 14px; display: flex;
-        align-items: center; gap: 20px;
-      }
-      .laporan-expanded canvas { flex-shrink: 0; }
-      .laporan-expanded .legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-      .laporan-expanded .leg-item { font-size: 12px; }
+
 
       /* Riwayat: wider table */
       .tx-item { padding: 12px 16px; }
@@ -1030,15 +1023,24 @@
             <div class="legend" id="d-legend-wallet"></div>
           </div>
         </div>
-        <!-- Expanded chart detail -->
-        <div class="laporan-expanded" id="laporan-expanded">
-          <canvas id="d-c-pie-expanded" height="260"></canvas>
-          <div class="legend" id="d-legend-expanded"></div>
+        <!-- Row 2: Bar chart as 4th card -->
+        <div class="laporan-donut-row" style="margin-top:0">
+          <div class="laporan-donut-card" data-dchart="cashflow" id="dcard-cashflow" style="grid-column:1/-1">
+            <div class="ldc-title">💹 Arus Kas 6 Bulan Terakhir</div>
+            <canvas id="d-c-bar" height="120"></canvas>
+          </div>
         </div>
-        <!-- Row 2: Bar chart full width -->
-        <div class="chart-wrap" style="margin-top:16px">
-          <div class="chart-sub">💹 Arus Kas 6 Bulan Terakhir</div>
-          <canvas id="d-c-bar" height="160"></canvas>
+
+        <!-- Chart popup modal -->
+        <div class="modal-overlay" id="modal-chart-detail">
+          <div class="modal" style="max-width:600px;padding:20px">
+            <div class="modal-hdr">
+              <div class="modal-title" id="chart-detail-title">Detail Chart</div>
+              <button class="modal-close" id="close-modal-chart">✕</button>
+            </div>
+            <canvas id="d-c-detail" style="width:100%;margin-top:12px"></canvas>
+            <div class="legend" id="d-legend-detail" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
         </div>
       </div>
 
