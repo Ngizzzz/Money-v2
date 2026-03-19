@@ -1281,6 +1281,8 @@ function initDesktop() {
   updateDesktopBalance();
   renderDesktopRecent();
   renderDesktopCharts();
+  setupResizable();
+  setupChartResizeObserver();
 }
 
 // ─── Desktop Nav ──────────────────────────────────────────────
@@ -1346,9 +1348,11 @@ function updateDesktopBalance() {
 
 function renderHomePie() {
   const canvas = document.getElementById('d-home-pie'); if (!canvas) return;
-  const container = canvas.parentElement;
-  const W = container.offsetWidth || 300;
-  const H = 260;
+  const container = canvas.closest('.chart-wrap') || canvas.parentElement;
+  const W = Math.max(container.clientWidth - 28, 200);
+  const H = Math.max(container.clientHeight - 60, 200);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
   const legend = document.getElementById('d-home-legend');
@@ -1859,3 +1863,104 @@ document.addEventListener('DOMContentLoaded', () => {
     if(isDesktop()) initDesktop();
   }, 100);
 });
+
+// ─── Auto-resize chart on column resize ──────────────────────
+function setupChartResizeObserver() {
+  const col3 = document.getElementById('bcol-3');
+  if (!col3 || !window.ResizeObserver) return;
+  const ro = new ResizeObserver(() => {
+    // Debounce
+    clearTimeout(window._chartResizeTimer);
+    window._chartResizeTimer = setTimeout(() => renderHomePie(), 50);
+  });
+  ro.observe(col3);
+}
+
+// ════════════════════════════════════════════════════════════════
+// RESIZABLE PANELS & COLUMNS
+// ════════════════════════════════════════════════════════════════
+function setupResizable() {
+  if (!isDesktop()) return;
+
+  // ── Sidebar resizer ──────────────────────────────────────────
+  const sidebarResizer = document.getElementById('sidebar-resizer');
+  const sidebar        = document.querySelector('.desktop-sidebar');
+  if (sidebarResizer && sidebar) {
+    let startX, startW;
+    const savedSW = localStorage.getItem('sidebar-width');
+    if (savedSW) sidebar.style.width = savedSW;
+
+    sidebarResizer.addEventListener('mousedown', e => {
+      startX = e.clientX;
+      startW = sidebar.offsetWidth;
+      sidebarResizer.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+
+      const onMove = e => {
+        const newW = Math.max(180, Math.min(400, startW + (e.clientX - startX)));
+        sidebar.style.width = newW + 'px';
+      };
+      const onUp = () => {
+        localStorage.setItem('sidebar-width', sidebar.style.width);
+        sidebarResizer.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  // ── Column resizers ──────────────────────────────────────────
+  setupColResizer('col-resizer-1', 'bcol-1', 'bcol-2');
+  setupColResizer('col-resizer-2', 'bcol-2', 'bcol-3');
+}
+
+function setupColResizer(resizerId, leftColId, rightColId) {
+  const resizer  = document.getElementById(resizerId);
+  const leftCol  = document.getElementById(leftColId);
+  const rightCol = document.getElementById(rightColId);
+  if (!resizer || !leftCol || !rightCol) return;
+
+  // Restore saved widths
+  const savedL = localStorage.getItem('col-w-'+leftColId);
+  const savedR = localStorage.getItem('col-w-'+rightColId);
+  if (savedL) leftCol.style.flex  = '0 0 ' + savedL;
+  if (savedR) rightCol.style.flex = '0 0 ' + savedR;
+
+  let startX, startLW, startRW;
+
+  resizer.addEventListener('mousedown', e => {
+    startX   = e.clientX;
+    startLW  = leftCol.offsetWidth;
+    startRW  = rightCol.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+
+    const onMove = e => {
+      const delta = e.clientX - startX;
+      const newLW = Math.max(180, startLW + delta);
+      const newRW = Math.max(180, startRW - delta);
+      leftCol.style.flex  = '0 0 ' + newLW + 'px';
+      rightCol.style.flex = '0 0 ' + newRW + 'px';
+      // Re-render chart after resize
+      if (rightColId === 'bcol-3') renderHomePie();
+    };
+    const onUp = () => {
+      localStorage.setItem('col-w-'+leftColId,  leftCol.offsetWidth  + 'px');
+      localStorage.setItem('col-w-'+rightColId, rightCol.offsetWidth + 'px');
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      renderHomePie();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
