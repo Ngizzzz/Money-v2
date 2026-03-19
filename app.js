@@ -333,12 +333,18 @@ function renderTxList(container, list) {
   list.forEach(tx => {
     const month = tx.date.slice(0,7);
     if (month !== lastMonth) {
-      const monthTotal = list
-        .filter(t => t.date.startsWith(month))
-        .reduce((s,t) => t.type==='expense' ? s-t.amount : t.type==='income' ? s+t.amount : s, 0);
+      const monthIncome  = list.filter(t=>t.date.startsWith(month)&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      const monthExpense = list.filter(t=>t.date.startsWith(month)&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const monthTotal   = monthIncome - monthExpense;
       html += `<div class="tx-month-separator">
-        <span class="tx-month-label">${fmtMon(month)}</span>
-        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':''}${fmt(monthTotal)}</span>
+        <div>
+          <span class="tx-month-label">${fmtMon(month)}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:10px;color:var(--mint)">+${fmt(monthIncome)}</span>
+          <span style="font-size:10px;color:var(--rose)">-${fmt(monthExpense)}</span>
+          <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
+        </div>
       </div>`;
       lastMonth = month;
     }
@@ -404,7 +410,7 @@ function renderWalletPage() {
           <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
           <div class="wallet-cat-info">
             <div class="wallet-cat-name">${cat.name}</div>
-            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}% dari total</span></div>
+            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">(${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}%)</span></div>
           </div>
         </div>
         <div class="wallet-cat-actions">
@@ -1612,12 +1618,16 @@ function renderTxListInto(container, list) {
   list.forEach(tx => {
     const month = tx.date.slice(0,7);
     if (month !== lastMonth) {
-      const monthTotal = list
-        .filter(t => t.date.startsWith(month))
-        .reduce((s,t) => t.type==='expense'?s-t.amount:t.type==='income'?s+t.amount:s, 0);
+      const mInc  = list.filter(t=>t.date.startsWith(month)&&t.type==='income').reduce((s,t)=>s+t.amount,0);
+      const mExp  = list.filter(t=>t.date.startsWith(month)&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
+      const monthTotal = mInc - mExp;
       html += `<div class="tx-month-separator">
-        <span class="tx-month-label">${fmtMon(month)}</span>
-        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':''}${fmt(monthTotal)}</span>
+        <div><span class="tx-month-label">${fmtMon(month)}</span></div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <span style="font-size:10px;color:var(--mint)">+${fmt(mInc)}</span>
+          <span style="font-size:10px;color:var(--rose)">-${fmt(mExp)}</span>
+          <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
+        </div>
       </div>`;
       lastMonth = month;
     }
@@ -1683,7 +1693,7 @@ function renderDesktopWallet() {
           <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
           <div class="wallet-cat-info">
             <div class="wallet-cat-name">${cat.name}</div>
-            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}% dari total</span></div>
+            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">(${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}%)</span></div>
           </div>
         </div>
         <div class="wallet-cat-actions">
@@ -1752,8 +1762,6 @@ function renderDesktopWallet() {
 }
 
 // ─── Desktop Charts ───────────────────────────────────────────
-let activeDesktopChart = 'expense';
-
 function setupDesktopLaporan() {
   // Filter tabs
   document.querySelectorAll('#dpage-laporan .lf-tab').forEach(tab=>{
@@ -1772,28 +1780,46 @@ function setupDesktopLaporan() {
   if(df) df.addEventListener('change',()=>{ laporanDateFrom=df.value; renderDesktopCharts(); });
   if(dt) dt.addEventListener('change',()=>{ laporanDateTo=dt.value; renderDesktopCharts(); });
 
-  // Donut card click
+  // Chart card click → popup
   document.querySelectorAll('.laporan-donut-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      activeDesktopChart = card.dataset.dchart;
-      document.querySelectorAll('.laporan-donut-card').forEach(c=>c.classList.remove('active'));
-      card.classList.add('active');
-      renderDesktopExpandedChart();
-    });
+    card.addEventListener('click',()=> openChartDetailModal(card.dataset.dchart));
   });
+
+  // Close chart modal
+  btn('close-modal-chart', ()=> closeModal('modal-chart-detail'));
 }
 
-function renderDesktopExpandedChart() {
-  const canvas = document.getElementById('d-c-pie-expanded');
-  const legend = document.getElementById('d-legend-expanded');
-  if (!canvas) return;
-  const W = canvas.offsetWidth || 280;
-  canvas.width = W; canvas.height = 260;
-  if (activeDesktopChart === 'wallet') {
-    renderWalletDonutInto('d-c-pie-expanded', 'd-legend-expanded');
-  } else {
-    renderDonutInto(activeDesktopChart, 'd-c-pie-expanded', 'd-legend-expanded');
-  }
+function openChartDetailModal(chartType) {
+  const titles = {
+    expense: '📉 Pengeluaran per Kategori',
+    income:  '📈 Pemasukan per Kategori',
+    wallet:  '🏦 Distribusi Dompet',
+    cashflow:'💹 Arus Kas 6 Bulan Terakhir'
+  };
+  document.getElementById('chart-detail-title').textContent = titles[chartType] || chartType;
+  openModal('modal-chart-detail');
+
+  // Wait for modal to render then draw chart
+  setTimeout(() => {
+    const canvas = document.getElementById('d-c-detail');
+    const legend = document.getElementById('d-legend-detail');
+    if (!canvas) return;
+    const modal  = canvas.closest('.modal');
+    const W = modal ? modal.offsetWidth - 48 : 520;
+    const H = chartType === 'cashflow' ? 220 : 320;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width  = W;
+    canvas.height = H;
+
+    if (chartType === 'cashflow') {
+      renderBarInto('d-c-detail');
+    } else if (chartType === 'wallet') {
+      renderWalletDonutInto('d-c-detail', 'd-legend-detail');
+    } else {
+      renderDonutInto(chartType, 'd-c-detail', 'd-legend-detail');
+    }
+  }, 100);
 }
 
 function updateDesktopLaporanInfo() {
@@ -1813,7 +1839,6 @@ function renderDesktopCharts() {
   renderDonutInto('income', 'd-c-pie-income', 'd-legend-income');
   renderWalletDonutInto('d-c-pie-wallet','d-legend-wallet');
   renderBarInto('d-c-bar');
-  renderDesktopExpandedChart();
 }
 
 function renderDonutInto(type, canvasId, legendId) {
