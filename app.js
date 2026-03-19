@@ -849,7 +849,18 @@ async function loadFromSheets() {
       return {...r,category:cat.id,icon:r.icon||cat.icon,synced:true};
     });
     // Load wallets if returned from Sheets
-    if (data.wallets && data.wallets.length) wallets = data.wallets;
+    if (data.wallets && data.wallets.length) {
+      // Simpan wallet dari Sheets tapi JANGAN overwrite currentBalance
+      // currentBalance selalu dihitung fresh dari calcWalletBalance
+      wallets = data.wallets.map(cat => ({
+        ...cat,
+        items: cat.items.map(item => {
+          // Pertahankan initialBalance dari Sheets, tapi hapus currentBalance
+          const { currentBalance, ...rest } = item;
+          return rest;
+        })
+      }));
+    }
     persist();
     updateBalance();
     renderRecent();
