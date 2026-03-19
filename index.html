@@ -426,12 +426,18 @@
       .cat-grid { grid-template-columns: repeat(4, 1fr); }
 
       /* Panels on desktop */
-      .sheet-panel { max-width: 400px; left: auto; right: 0; z-index: 50; }
-      .sheet-panel.open { transform: none; pointer-events: all; }
-      .sheet-panel .panel-body * { pointer-events: all; }
+      .sheet-panel {
+        position: fixed !important;
+        top: 0; right: -100%; left: auto;
+        width: 380px; max-width: 380px;
+        height: 100vh;
+        z-index: 100;
+        transition: right .25s ease;
+      }
+      .sheet-panel.open { right: 0 !important; transform: none !important; }
 
       /* Modals on desktop */
-      .modal-overlay { align-items: center; }
+      .modal-overlay { align-items: center; position: fixed !important; z-index: 100; }
       .modal { border-radius: 16px; max-width: 440px; margin: 0 auto; padding-bottom: 24px; }
     }
 
