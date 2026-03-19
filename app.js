@@ -43,8 +43,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSettings();
   setupWalletPage();
   setupModals();
+  setupEditTxModal();
+  setupLaporanFilter();
   updateConnBadge();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  setupPWAInstall();
   if (cfg.scriptUrl) await loadFromSheets();
   setInterval(async () => {
     if (cfg.scriptUrl && !modalOpen && !isFormActive()) {
@@ -324,7 +327,7 @@ function renderTxList(container, list) {
   container.innerHTML = list.map(tx => {
     const walletLabel = tx.type==='transfer' ? '' :
       (tx.walletId ? ` · ${findWalletItem(tx.walletId)?.name||''}` : '');
-    return `<div class="tx-item">
+    return `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
       <div class="tx-ico ${tx.type}">${tx.icon||'📦'}</div>
       <div class="tx-body">
         <div class="tx-cat">${tx.label}</div>
@@ -334,9 +337,16 @@ function renderTxList(container, list) {
         <div class="tx-amt ${tx.type}">${tx.type==='expense'?'- ':tx.type==='income'?'+':'↔'}${fmt(tx.amount)}</div>
         <div class="tx-date">${fmtDate(tx.date)}</div>
       </div>
-      <button class="tx-del" data-id="${tx.id}">✕</button>
+      <button class="tx-del" data-id="${tx.id}" title="Hapus">✕</button>
     </div>`;
   }).join('');
+  // Click on tx item to view/edit
+  container.querySelectorAll('.tx-item').forEach(item => {
+    item.addEventListener('click', e => {
+      if (e.target.closest('.tx-del')) return;
+      openEditTx(item.dataset.txId);
+    });
+  });
   container.querySelectorAll('.tx-del').forEach(b =>
     b.addEventListener('click', async () => {
       const id = b.dataset.id;
@@ -642,6 +652,7 @@ let activeChart = 'expense-pie';
 
 function renderCharts() {
   setupChartTabs();
+  updateLaporanFilterInfo();
   renderActiveChart();
 }
 
@@ -680,7 +691,7 @@ function renderDonut(type) {
   const W = canvas.offsetWidth || 320; canvas.width = W;
   const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
 
-  const filtered = txs.filter(t => t.type === type);
+  const filtered = getFilteredTxsForLaporan().filter(t => t.type === type);
   const totals = {};
   filtered.forEach(t => totals[t.label] = (totals[t.label]||0) + t.amount);
   const labels = Object.keys(totals), data = Object.values(totals);
@@ -766,10 +777,12 @@ function renderBar() {
   if (!canvas) return;
   const W=canvas.offsetWidth||320; canvas.width=W;
   const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,150);
+  // Bar chart gunakan semua data atau filter sesuai pilihan
+  const filteredForBar = getFilteredTxsForLaporan();
   const months=[];
   for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
-  const inc=months.map(m=>txs.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const exp=months.map(m=>txs.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const inc=months.map(m=>filteredForBar.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const exp=months.map(m=>filteredForBar.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
   const max=Math.max(...inc,...exp,1);
   const pL=10,pR=10,pB=24,pT=14,cW=W-pL-pR,cH=150-pB-pT,gW=cW/months.length,bW=gW*0.3;
   months.forEach((m,i)=>{
@@ -972,4 +985,275 @@ function toast(msg,type='') {
   el.textContent=msg; el.className='toast show'+(type?' '+type:'');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ─── Edit Transaction ──────────────────────────────────────────
+let editTxType = 'expense';
+let editTxCat  = '';
+
+function openEditTx(txId) {
+  const tx = txs.find(t => t.id === txId);
+  if (!tx) return;
+
+  editTxType = tx.type;
+  editTxCat  = tx.category || '';
+
+  document.getElementById('tx-edit-id').value       = txId;
+  document.getElementById('tx-edit-amount').value   = tx.amount;
+  document.getElementById('tx-edit-date').value     = tx.date;
+  document.getElementById('tx-edit-note').value     = tx.note || '';
+  document.getElementById('modal-tx-title').textContent = tx.type === 'transfer' ? 'Edit Transfer' : 'Edit Transaksi';
+
+  // Set type toggle
+  ['expense','income','transfer'].forEach(t => {
+    const b = document.getElementById('tx-tbtn-'+t);
+    if (b) b.classList.toggle('active', t === tx.type);
+  });
+
+  // Show/hide sections
+  const catSection     = document.getElementById('tx-edit-cat-section');
+  const walletSingle   = document.getElementById('tx-edit-wallet-single');
+  const walletTransfer = document.getElementById('tx-edit-wallet-transfer');
+  if (tx.type === 'transfer') {
+    catSection.style.display     = 'none';
+    walletSingle.style.display   = 'none';
+    walletTransfer.style.display = 'block';
+  } else {
+    catSection.style.display     = 'block';
+    walletSingle.style.display   = 'flex';
+    walletTransfer.style.display = 'none';
+  }
+
+  // Populate wallet selects
+  const makeOpts = (skipId='') => wallets.map(cat =>
+    `<optgroup label="${cat.icon} ${cat.name}">` +
+    cat.items.filter(i=>i.id!==skipId).map(i =>
+      `<option value="${i.id}">${i.name}</option>`
+    ).join('') + '</optgroup>'
+  ).join('');
+
+  const wSingle = document.getElementById('tx-edit-wallet');
+  const wFrom   = document.getElementById('tx-edit-wallet-from');
+  const wTo     = document.getElementById('tx-edit-wallet-to');
+  if (wSingle) { wSingle.innerHTML = '<option value="" disabled>Pilih dompet...</option>' + makeOpts(); wSingle.value = tx.walletId || ''; }
+  if (wFrom)   { wFrom.innerHTML   = '<option value="" disabled>Pilih...</option>' + makeOpts(); wFrom.value = tx.walletFrom || ''; }
+  if (wTo)     { wTo.innerHTML     = '<option value="" disabled>Pilih...</option>' + makeOpts(); wTo.value = tx.walletTo || ''; }
+
+  // Render categories
+  renderEditCatGrid(tx.type, tx.category);
+
+  openModal('modal-tx-edit');
+}
+
+function renderEditCatGrid(type, selectedCatId) {
+  const grid = document.getElementById('tx-edit-cat-grid');
+  if (!grid) return;
+  const cats = CATS[type] || [];
+  grid.innerHTML = cats.map(c => `
+    <button class="cat-btn ${c.id===selectedCatId?'sel '+type:''}" data-cat="${c.id}">
+      <span class="ci">${c.icon}</span>${c.label}
+    </button>`).join('');
+  grid.querySelectorAll('.cat-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      editTxCat = b.dataset.cat;
+      renderEditCatGrid(editTxType, editTxCat);
+    });
+  });
+}
+
+function setupEditTxModal() {
+  btn('close-modal-tx-edit', () => closeModal('modal-tx-edit'));
+  btn('btn-save-tx-edit',    saveEditTx);
+
+  // Type toggle in edit modal
+  ['expense','income','transfer'].forEach(t => {
+    btn('tx-tbtn-'+t, () => {
+      editTxType = t;
+      editTxCat  = '';
+      ['expense','income','transfer'].forEach(x => {
+        const b = document.getElementById('tx-tbtn-'+x);
+        if (b) b.classList.toggle('active', x===t);
+      });
+      const catSection     = document.getElementById('tx-edit-cat-section');
+      const walletSingle   = document.getElementById('tx-edit-wallet-single');
+      const walletTransfer = document.getElementById('tx-edit-wallet-transfer');
+      if (t === 'transfer') {
+        catSection.style.display     = 'none';
+        walletSingle.style.display   = 'none';
+        walletTransfer.style.display = 'block';
+      } else {
+        catSection.style.display     = 'block';
+        walletSingle.style.display   = 'flex';
+        walletTransfer.style.display = 'none';
+      }
+      renderEditCatGrid(t, '');
+    });
+  });
+}
+
+async function saveEditTx() {
+  const txId   = document.getElementById('tx-edit-id').value;
+  const amount = parseFloat(document.getElementById('tx-edit-amount').value);
+  const date   = document.getElementById('tx-edit-date').value;
+  const note   = document.getElementById('tx-edit-note').value.trim();
+  const wallet = document.getElementById('tx-edit-wallet')?.value || '';
+  const wFrom  = document.getElementById('tx-edit-wallet-from')?.value || '';
+  const wTo    = document.getElementById('tx-edit-wallet-to')?.value || '';
+
+  if (!amount || amount <= 0) return toast('Masukkan jumlah yang valid','error');
+  if (!date) return toast('Pilih tanggal','error');
+  if (editTxType !== 'transfer' && !editTxCat) return toast('Pilih kategori','error');
+  if (editTxType !== 'transfer' && !wallet) return toast('Pilih dompet','error');
+  if (editTxType === 'transfer' && (!wFrom || !wTo)) return toast('Pilih dompet asal & tujuan','error');
+  if (editTxType === 'transfer' && wFrom === wTo) return toast('Dompet asal & tujuan harus berbeda','error');
+
+  const oldTx = txs.find(t => t.id === txId);
+  if (!oldTx) return;
+
+  let updatedTx;
+  if (editTxType === 'transfer') {
+    const fromItem = findWalletItem(wFrom);
+    const toItem   = findWalletItem(wTo);
+    updatedTx = { ...oldTx, type:'transfer', amount, date, note,
+      label: `Transfer: ${fromItem?.name||wFrom} → ${toItem?.name||wTo}`,
+      icon: '↔', walletFrom: wFrom, walletTo: wTo };
+  } else {
+    const ci = catInfo(editTxCat);
+    updatedTx = { ...oldTx, type: editTxType, amount, date, note,
+      category: editTxCat, label: ci.label, icon: ci.icon,
+      walletId: wallet, synced: false };
+  }
+
+  txs = txs.map(t => t.id === txId ? updatedTx : t);
+  persist(); updateBalance(); renderRecent(); populateWalletSelects();
+  if (currentPage === 'riwayat') renderHistory();
+  if (currentPage === 'dompet')  renderWalletPage();
+  closeModal('modal-tx-edit');
+  toast('✓ Transaksi diperbarui!','success');
+
+  // Sync to Sheets
+  if (cfg.scriptUrl) {
+    await updateTxInSheets(updatedTx);
+    syncWalletBalancesAfterTx();
+  }
+}
+
+async function updateTxInSheets(tx) {
+  if (!cfg.scriptUrl) return;
+  try {
+    const row = [
+      tx.date,
+      tx.type==='income'?'Pemasukan':tx.type==='expense'?'Pengeluaran':tx.type==='transfer'?'Transfer':'Penyesuaian',
+      tx.label, tx.amount, tx.note||'', tx.id,
+      tx.walletId||tx.walletFrom||'', tx.walletTo||''
+    ];
+    await fetch(cfg.scriptUrl.trim(), {
+      method: 'POST',
+      body: JSON.stringify({ action: 'update', id: tx.id, row })
+    });
+  } catch(e) { console.error('updateTxInSheets:', e); }
+}
+
+// ─── Laporan Filter ───────────────────────────────────────────
+let laporanPeriod   = 'all';
+let laporanDateFrom = '';
+let laporanDateTo   = '';
+
+function setupLaporanFilter() {
+  document.querySelectorAll('.lf-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      laporanPeriod = tab.dataset.period;
+      document.querySelectorAll('.lf-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const customRange = document.getElementById('laporan-custom-range');
+      if (customRange) customRange.style.display = laporanPeriod === 'custom' ? 'flex' : 'none';
+      updateLaporanFilterInfo();
+      renderCharts();
+    });
+  });
+
+  const fromInput = document.getElementById('laporan-date-from');
+  const toInput   = document.getElementById('laporan-date-to');
+  if (fromInput) fromInput.addEventListener('change', () => {
+    laporanDateFrom = fromInput.value;
+    updateLaporanFilterInfo();
+    renderCharts();
+  });
+  if (toInput) toInput.addEventListener('change', () => {
+    laporanDateTo = toInput.value;
+    updateLaporanFilterInfo();
+    renderCharts();
+  });
+}
+
+function updateLaporanFilterInfo() {
+  const el = document.getElementById('laporan-filter-info');
+  if (!el) return;
+  const now = new Date();
+  if (laporanPeriod === 'month') {
+    el.textContent = now.toLocaleDateString('id-ID', {month:'long', year:'numeric'});
+  } else if (laporanPeriod === 'year') {
+    el.textContent = 'Tahun ' + now.getFullYear();
+  } else if (laporanPeriod === 'custom') {
+    if (laporanDateFrom && laporanDateTo)
+      el.textContent = fmtDate(laporanDateFrom) + ' – ' + fmtDate(laporanDateTo);
+    else el.textContent = 'Pilih rentang tanggal';
+  } else {
+    el.textContent = 'Semua waktu';
+  }
+}
+
+function getFilteredTxsForLaporan() {
+  const now = new Date();
+  return txs.filter(tx => {
+    if (laporanPeriod === 'month') {
+      return tx.date.startsWith(now.toISOString().slice(0,7));
+    } else if (laporanPeriod === 'year') {
+      return tx.date.startsWith(String(now.getFullYear()));
+    } else if (laporanPeriod === 'custom') {
+      if (laporanDateFrom && tx.date < laporanDateFrom) return false;
+      if (laporanDateTo   && tx.date > laporanDateTo)   return false;
+      return true;
+    }
+    return true; // 'all'
+  });
+}
+
+// ─── PWA Install ──────────────────────────────────────────────
+let deferredPrompt = null;
+
+function setupPWAInstall() {
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.classList.add('show');
+  });
+
+  btn('pwa-install-btn', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.classList.remove('show');
+    if (outcome === 'accepted') toast('✓ Aplikasi berhasil diinstall!','success');
+  });
+
+  btn('pwa-banner-close', () => {
+    const banner = document.getElementById('pwa-banner');
+    if (banner) banner.classList.remove('show');
+  });
+
+  // iOS Safari — tidak support beforeinstallprompt, tampilkan instruksi manual
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+  if (isIOS && !isInStandaloneMode) {
+    const banner = document.getElementById('pwa-banner');
+    if (banner) {
+      banner.querySelector('.pwa-banner-text').textContent = '📱 Di Safari: tap ↑ lalu "Add to Home Screen"';
+      banner.querySelector('#pwa-install-btn').style.display = 'none';
+      banner.classList.add('show');
+    }
+  }
 }
