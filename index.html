@@ -186,8 +186,8 @@
     .nav-btn.active { color:var(--lime); }
 
     /* Panels */
-    .sheet-panel { position:fixed; inset:0; background:var(--bg); z-index:20; transform:translateX(100%); transition:transform .25s ease; display:flex; flex-direction:column; max-width:480px; margin:0 auto; }
-    .sheet-panel.open { transform:none; }
+    .sheet-panel { position:fixed; top:0; right:-100%; bottom:0; width:100%; max-width:420px; background:var(--bg); z-index:200; transition:right .25s ease; display:flex; flex-direction:column; }
+    .sheet-panel.open { right:0; }
     .panel-hdr { padding:calc(14px + var(--safe-top)) 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
     .panel-title { font-size:16px; font-weight:700; }
     .panel-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:14px; }
@@ -216,7 +216,8 @@
     .chart-panel.active { display:block; }
 
     /* Modal */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:30; display:none; align-items:flex-end; justify-content:center; }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:150; display:none; align-items:flex-end; justify-content:center; }
+    .modal-overlay.open { display:flex; }
     .modal-overlay.open { display:flex; }
     .modal { background:var(--bg); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; display:flex; flex-direction:column; gap:12px; padding-bottom:calc(20px + var(--safe-bot)); border-top:1px solid var(--border2); }
     .modal-hdr { display:flex; align-items:center; justify-content:space-between; }
@@ -425,38 +426,26 @@
       /* Form inputs desktop */
       .cat-grid { grid-template-columns: repeat(4, 1fr); }
 
-      /* Panels on desktop */
-      .sheet-panel {
-        position: fixed !important;
-        top: 0; right: -100%; left: auto;
-        width: 380px; max-width: 380px;
-        height: 100vh;
-        z-index: 100;
-        transition: right .25s ease;
-      }
-      .sheet-panel.open { right: 0 !important; transform: none !important; }
+      /* Panels on desktop - already handled by base style */
+      .sheet-panel { max-width: 400px; }
 
       /* Modals on desktop */
-      .modal-overlay { align-items: center; position: fixed !important; z-index: 100; }
+      .modal-overlay { align-items: center; }
       .modal { border-radius: 16px; max-width: 440px; margin: 0 auto; padding-bottom: 24px; }
     }
 
-    /* Hide desktop elements on mobile */
-    .desktop-sidebar { display: none; }
-    #desktop-main { display: none; }
+    /* ── Mobile: hide desktop elements ── */
+    .desktop-sidebar { display: none !important; }
+    #desktop-main    { display: none !important; }
 
+    /* ── Desktop: swap layouts ── */
     @media (min-width: 768px) {
-      /* Show desktop, hide mobile */
       .desktop-sidebar { display: flex !important; flex-direction: column; }
-      #desktop-main { display: flex !important; flex-direction: column; }
-      .topbar { display: none !important; }
-      #main { display: none !important; }
-      .bottom-nav { display: none !important; }
-      .pwa-banner { display: none !important; }
-      /* Modals still work on desktop */
-      .modal-overlay { display: none; }
-      .modal-overlay.open { display: flex; }
-      .sheet-panel { display: flex; }
+      #desktop-main    { display: flex !important; flex-direction: column; }
+      .topbar          { display: none !important; }
+      #main            { display: none !important; }
+      .bottom-nav      { display: none !important; }
+      .pwa-banner      { display: none !important; }
     }
   </style>
 </head>
