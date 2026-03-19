@@ -173,9 +173,9 @@
     .wallet-item-btn.del:hover { color:var(--rose); }
     .wallet-add-item-btn { display:flex; align-items:center; gap:6px; padding:10px 14px; color:var(--t3); font-size:12px; cursor:pointer; background:none; border:none; font-family:'Syne',sans-serif; transition:color .15s; width:100%; }
     .wallet-add-item-btn:hover { color:var(--lime); }
-    .counted-badge { font-size:9px; padding:2px 6px; border-radius:10px; font-weight:600; }
-    .counted-badge.yes { background:var(--mint-d); color:var(--mint); }
-    .counted-badge.no  { background:var(--s2); color:var(--t3); }
+    .counted-badge { font-size:9px; padding:3px 8px; border-radius:10px; font-weight:700; }
+    .counted-badge.yes { background:var(--mint-d); color:var(--mint); border:1px solid var(--mint); }
+    .counted-badge.no  { background:var(--rose-d); color:var(--rose); border:1px solid var(--rose); }
 
     /* Bottom Nav */
     .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; padding:8px 20px calc(8px + var(--safe-bot)); background:var(--bg); border-top:1px solid var(--border); display:flex; z-index:10; }
@@ -222,6 +222,10 @@
     .modal-close:hover { background:var(--s2); }
     .checkbox-row { display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer; padding:4px 0; }
     .checkbox-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--lime); cursor:pointer; flex-shrink:0; }
+    .toggle-row { display:flex; gap:8px; margin-top:6px; }
+    .toggle-btn { flex:1; padding:10px; border-radius:var(--rsm); border:1.5px solid var(--border); background:var(--s2); color:var(--t2); font-family:'Syne',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
+    .toggle-btn.active.yes-btn { border-color:var(--mint); background:var(--mint-d); color:var(--mint); }
+    .toggle-btn.active.no-btn  { border-color:var(--rose); background:var(--rose-d); color:var(--rose); }
   </style>
 </head>
 <body>
@@ -270,7 +274,7 @@
         </div>
         <div id="wallet-single-row" class="wallet-row">
           <label>Dompet</label>
-          <select id="inp-wallet"><option value="">-- Tanpa Dompet --</option></select>
+          <select id="inp-wallet"><option value="">-- Pilih Dompet --</option></select>
         </div>
         <div id="wallet-transfer-rows" style="display:none">
           <div class="wallet-row">
@@ -427,7 +431,7 @@
     </div>
   </div>
 
-  <!-- Modal: Item Dompet -->
+  <!-- Modal: Item Dompet (Tambah) -->
   <div class="modal-overlay" id="modal-witem">
     <div class="modal">
       <div class="modal-hdr">
@@ -435,11 +439,19 @@
         <button class="modal-close" id="close-modal-witem">✕</button>
       </div>
       <div><div class="field-label">Nama Dompet</div><input type="text" id="witem-name" placeholder="BCA, GoPay, Reksa Dana..."/></div>
-      <div>
+      <div id="witem-balance-section">
         <div class="field-label">Saldo Awal (Rp)</div>
         <div class="input-wrap"><span class="input-prefix">Rp</span><input type="number" id="witem-balance" class="has-prefix" placeholder="0" min="0"/></div>
+        <div class="field-hint">Saldo dompet saat ini sebelum mencatat transaksi di aplikasi</div>
       </div>
-      <label class="checkbox-row"><input type="checkbox" id="witem-counted" checked/> Dihitung ke saldo bersih</label>
+      <div>
+        <div class="field-label">Dihitung ke Saldo Bersih</div>
+        <div class="toggle-row">
+          <button type="button" class="toggle-btn active yes-btn" id="witem-counted-yes" onclick="setCountedToggle(true)">✅ Ya, dihitung</button>
+          <button type="button" class="toggle-btn" id="witem-counted-no" onclick="setCountedToggle(false)">❌ Tidak dihitung</button>
+        </div>
+        <input type="hidden" id="witem-counted" value="true"/>
+      </div>
       <input type="hidden" id="witem-cat-id"/>
       <input type="hidden" id="witem-edit-id"/>
       <button class="btn-primary" id="btn-save-witem">Simpan Dompet</button>
