@@ -222,6 +222,22 @@
     .modal-close:hover { background:var(--s2); }
     .checkbox-row { display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer; padding:4px 0; }
     .checkbox-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--lime); cursor:pointer; flex-shrink:0; }
+    /* PWA Install Banner */
+    .pwa-banner { display:none; margin:0 0 12px; background:var(--lime-d); border:1px solid var(--lime); border-radius:var(--r); padding:12px 14px; }
+    .pwa-banner.show { display:flex; align-items:center; gap:10px; }
+    .pwa-banner-text { flex:1; font-size:12px; color:var(--lime); font-weight:600; }
+    .pwa-banner-btn { background:var(--lime); color:#0d0d10; border:none; border-radius:var(--rsm); padding:7px 14px; font-family:'Syne',sans-serif; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .pwa-banner-close { background:none; border:none; color:var(--t3); cursor:pointer; font-size:16px; padding:2px; }
+
+    /* Laporan filter */
+    .laporan-filter { margin-bottom:14px; }
+    .laporan-filter-tabs { display:flex; gap:6px; margin-bottom:8px; }
+    .lf-tab { flex:1; padding:7px 4px; background:var(--s1); border:1px solid var(--border); border-radius:20px; color:var(--t2); font-family:'Syne',sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all .15s; }
+    .lf-tab.active { background:var(--lime-d); border-color:var(--lime); color:var(--lime); }
+    .laporan-filter-custom { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .laporan-filter-custom input { flex:1; font-size:12px; padding:8px 10px; }
+    .laporan-filter-info { font-size:11px; color:var(--t3); min-height:16px; }
+
     .toggle-row { display:flex; gap:8px; margin-top:6px; }
     .toggle-btn { flex:1; padding:10px; border-radius:var(--rsm); border:1.5px solid var(--border); background:var(--s2); color:var(--t2); font-family:'Syne',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
     .toggle-btn.active.yes-btn { border-color:var(--mint); background:var(--mint-d); color:var(--mint); }
@@ -242,6 +258,13 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93a10 10 0 0 0 14.14 14.14"/></svg>
       </button>
     </div>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div class="pwa-banner" id="pwa-banner">
+    <span class="pwa-banner-text">📱 Install aplikasi Money di HP kamu!</span>
+    <button class="pwa-banner-btn" id="pwa-install-btn">Install</button>
+    <button class="pwa-banner-close" id="pwa-banner-close">✕</button>
   </div>
 
   <div id="main">
@@ -323,6 +346,21 @@
     <!-- Laporan -->
     <div class="page" id="page-laporan">
       <div class="section">
+        <!-- Filter laporan -->
+        <div class="laporan-filter">
+          <div class="laporan-filter-tabs">
+            <button class="lf-tab active" data-period="all">Semua</button>
+            <button class="lf-tab" data-period="month">Bulan Ini</button>
+            <button class="lf-tab" data-period="year">Tahun Ini</button>
+            <button class="lf-tab" data-period="custom">Custom</button>
+          </div>
+          <div class="laporan-filter-custom" id="laporan-custom-range" style="display:none">
+            <input type="date" id="laporan-date-from" placeholder="Dari"/>
+            <span style="color:var(--t3);font-size:12px">s/d</span>
+            <input type="date" id="laporan-date-to" placeholder="Sampai"/>
+          </div>
+          <div class="laporan-filter-info" id="laporan-filter-info"></div>
+        </div>
         <!-- Chart selector tabs -->
         <div class="chart-tabs" id="chart-tabs">
           <button class="chart-tab active" data-chart="expense-pie">📉 Pengeluaran</button>
@@ -455,6 +493,48 @@
       <input type="hidden" id="witem-cat-id"/>
       <input type="hidden" id="witem-edit-id"/>
       <button class="btn-primary" id="btn-save-witem">Simpan Dompet</button>
+    </div>
+  </div>
+
+  <!-- Modal: View/Edit Transaksi -->
+  <div class="modal-overlay" id="modal-tx-edit">
+    <div class="modal">
+      <div class="modal-hdr">
+        <div class="modal-title" id="modal-tx-title">Detail Transaksi</div>
+        <button class="modal-close" id="close-modal-tx-edit">✕</button>
+      </div>
+      <div class="type-toggle" id="tx-edit-type-toggle">
+        <button class="type-btn active expense" data-t="expense" id="tx-tbtn-expense">Pengeluaran</button>
+        <button class="type-btn income" data-t="income" id="tx-tbtn-income">Pemasukan</button>
+        <button class="type-btn transfer" data-t="transfer" id="tx-tbtn-transfer">Transfer</button>
+      </div>
+      <div class="input-row">
+        <div class="input-wrap" style="flex:1.5">
+          <span class="input-prefix">Rp</span>
+          <input type="number" id="tx-edit-amount" class="has-prefix" placeholder="0" min="0"/>
+        </div>
+        <input type="date" id="tx-edit-date" style="flex:1"/>
+      </div>
+      <div id="tx-edit-cat-section">
+        <div class="cat-grid" id="tx-edit-cat-grid"></div>
+      </div>
+      <div id="tx-edit-wallet-single" class="wallet-row">
+        <label>Dompet</label>
+        <select id="tx-edit-wallet"><option value="" disabled selected>Pilih dompet...</option></select>
+      </div>
+      <div id="tx-edit-wallet-transfer" style="display:none">
+        <div class="wallet-row">
+          <label>Dari</label>
+          <select id="tx-edit-wallet-from"><option value="" disabled selected>Pilih...</option></select>
+        </div>
+        <div class="wallet-row">
+          <label>Ke</label>
+          <select id="tx-edit-wallet-to"><option value="" disabled selected>Pilih...</option></select>
+        </div>
+      </div>
+      <input type="text" id="tx-edit-note" placeholder="Catatan (opsional)…"/>
+      <input type="hidden" id="tx-edit-id"/>
+      <button class="btn-primary" id="btn-save-tx-edit">Simpan Perubahan</button>
     </div>
   </div>
 
