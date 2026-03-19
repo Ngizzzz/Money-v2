@@ -403,16 +403,21 @@
     }
 
     /* Hide desktop elements on mobile */
-    .desktop-sidebar, #desktop-main { display: none; }
+    .desktop-sidebar { display: none; }
+    #desktop-main { display: none; }
+
     @media (min-width: 768px) {
-      .desktop-sidebar, #desktop-main { display: flex; }
-      #app > .topbar,
-      #app > .pwa-banner,
-      #app > #main,
-      #app > .bottom-nav { display: none !important; }
-      #app > .sheet-panel,
-      #app > .modal-overlay,
-      #app > .toast { display: flex; }
+      /* Show desktop, hide mobile */
+      .desktop-sidebar { display: flex !important; flex-direction: column; }
+      #desktop-main { display: flex !important; flex-direction: column; }
+      .topbar { display: none !important; }
+      #main { display: none !important; }
+      .bottom-nav { display: none !important; }
+      .pwa-banner { display: none !important; }
+      /* Modals still work on desktop */
+      .modal-overlay { display: none; }
+      .modal-overlay.open { display: flex; }
+      .sheet-panel { display: flex; }
     }
   </style>
 </head>
