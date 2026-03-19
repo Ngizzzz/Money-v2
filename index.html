@@ -378,15 +378,58 @@
       .d-summary-card.expense .d-sum-val { color: var(--rose); }
       .d-sum-val.negative { color: var(--rose) !important; }
 
-      /* Beranda: 3 column grid */
+      /* Beranda: resizable 3 column grid */
       .beranda-grid-3 {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
+        display: flex;
+        gap: 0;
         align-items: stretch;
+        height: calc(100vh - 220px);
+        min-height: 400px;
       }
-      .beranda-grid-3 > div { display: flex; flex-direction: column; }
-      .beranda-grid-3 > div > .chart-wrap { flex: 1; }
+      .beranda-col {
+        display: flex;
+        flex-direction: column;
+        min-width: 200px;
+        overflow: hidden;
+      }
+      .beranda-col > .chart-wrap {
+        flex: 1;
+        margin-bottom: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .beranda-col > .chart-wrap .tx-list { flex: 1; overflow-y: auto; }
+      .col-resizer {
+        width: 6px;
+        background: transparent;
+        cursor: col-resize;
+        flex-shrink: 0;
+        position: relative;
+        transition: background .15s;
+      }
+      .col-resizer:hover, .col-resizer.dragging { background: var(--lime); }
+      .col-resizer::after {
+        content: '';
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px; height: 40px;
+        background: var(--border2);
+        border-radius: 2px;
+      }
+      .col-resizer:hover::after, .col-resizer.dragging::after { background: var(--lime); }
+
+      /* Sidebar resizer */
+      .sidebar-resizer {
+        width: 5px;
+        background: transparent;
+        cursor: col-resize;
+        flex-shrink: 0;
+        transition: background .15s;
+        position: relative;
+      }
+      .sidebar-resizer:hover, .sidebar-resizer.dragging { background: var(--lime); }
       /* Legacy 2col */
       .beranda-grid {
         display: grid;
@@ -808,6 +851,7 @@
     </div>
   </div>
 
+  <div class="sidebar-resizer" id="sidebar-resizer"></div>
   <div id="desktop-main">
     <div class="desktop-topbar">
       <div class="desktop-page-title" id="d-page-title">Beranda</div>
@@ -836,10 +880,10 @@
           </div>
         </div>
 
-        <!-- Main grid: form + recent + chart -->
-        <div class="beranda-grid-3">
+        <!-- Main grid: form + recent + chart (resizable) -->
+        <div class="beranda-grid-3" id="beranda-grid">
           <!-- Col 1: Form transaksi -->
-          <div>
+          <div class="beranda-col" id="bcol-1">
             <div class="chart-wrap" style="margin-bottom:0">
               <div class="chart-sub">Catat Transaksi</div>
               <div class="type-toggle" id="d-type-toggle">
@@ -877,19 +921,23 @@
             </div>
           </div>
 
+          <div class="col-resizer" id="col-resizer-1"></div>
+
           <!-- Col 2: Transaksi terbaru -->
-          <div>
-            <div class="chart-wrap" style="margin-bottom:0;height:100%">
+          <div class="beranda-col" id="bcol-2">
+            <div class="chart-wrap" style="margin-bottom:0">
               <div class="chart-sub">Transaksi Terbaru</div>
-              <div class="tx-list" id="d-recent-list" style="max-height:480px;overflow-y:auto"></div>
+              <div class="tx-list" id="d-recent-list"></div>
             </div>
           </div>
 
+          <div class="col-resizer" id="col-resizer-2"></div>
+
           <!-- Col 3: Grafik pengeluaran -->
-          <div>
+          <div class="beranda-col" id="bcol-3">
             <div class="chart-wrap" style="margin-bottom:0">
               <div class="chart-sub">Pengeluaran per Kategori</div>
-              <canvas id="d-home-pie" height="200"></canvas>
+              <canvas id="d-home-pie"></canvas>
               <div class="legend" id="d-home-legend"></div>
             </div>
           </div>
