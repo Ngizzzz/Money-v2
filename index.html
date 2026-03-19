@@ -355,7 +355,35 @@
       .desktop-page { display: none; }
       .desktop-page.active { display: block; }
 
-      /* Beranda: 2 column */
+      /* Beranda summary row */
+      .d-summary-row {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .d-summary-card {
+        background: var(--s1); border: 1px solid var(--border);
+        border-radius: var(--r); padding: 16px 18px;
+      }
+      .d-summary-card.main { border-left: 3px solid var(--lime); }
+      .d-summary-card.income { border-left: 3px solid var(--mint); }
+      .d-summary-card.expense { border-left: 3px solid var(--rose); }
+      .d-sum-label { font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+      .d-sum-val { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; }
+      .d-summary-card.main .d-sum-val { color: var(--lime); }
+      .d-summary-card.income .d-sum-val { color: var(--mint); }
+      .d-summary-card.expense .d-sum-val { color: var(--rose); }
+      .d-sum-val.negative { color: var(--rose) !important; }
+
+      /* Beranda: 3 column grid */
+      .beranda-grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      /* Legacy 2col */
       .beranda-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -752,21 +780,6 @@
       </div>
     </div>
 
-    <div class="sidebar-balance">
-      <div class="sb-label">Saldo Bersih</div>
-      <div class="sb-amount" id="d-balance-val">Rp 0</div>
-      <div class="sb-mini">
-        <div class="sb-mini-card income">
-          <div class="sb-mini-label">▲ Pemasukan</div>
-          <div class="sb-mini-val" id="d-total-in">Rp 0</div>
-        </div>
-        <div class="sb-mini-card expense">
-          <div class="sb-mini-label">▼ Pengeluaran</div>
-          <div class="sb-mini-val" id="d-total-out">Rp 0</div>
-        </div>
-      </div>
-    </div>
-
     <nav class="sidebar-nav">
       <button class="sidebar-nav-btn active" data-dpage="beranda">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -806,8 +819,26 @@
 
       <!-- Desktop: Beranda -->
       <div class="desktop-page active" id="dpage-beranda">
-        <div class="beranda-grid">
-          <div class="beranda-left">
+        <!-- Summary row -->
+        <div class="d-summary-row">
+          <div class="d-summary-card main">
+            <div class="d-sum-label">Saldo Bersih</div>
+            <div class="d-sum-val" id="d-balance-val">Rp 0</div>
+          </div>
+          <div class="d-summary-card income">
+            <div class="d-sum-label">▲ Pemasukan</div>
+            <div class="d-sum-val" id="d-total-in">Rp 0</div>
+          </div>
+          <div class="d-summary-card expense">
+            <div class="d-sum-label">▼ Pengeluaran</div>
+            <div class="d-sum-val" id="d-total-out">Rp 0</div>
+          </div>
+        </div>
+
+        <!-- Main grid: form + recent + chart -->
+        <div class="beranda-grid-3">
+          <!-- Col 1: Form transaksi -->
+          <div>
             <div class="chart-wrap" style="margin-bottom:0">
               <div class="chart-sub">Catat Transaksi</div>
               <div class="type-toggle" id="d-type-toggle">
@@ -844,10 +875,21 @@
               <div id="d-save-status" style="font-size:11px;text-align:center;margin-top:6px;min-height:16px;color:var(--mint)"></div>
             </div>
           </div>
-          <div class="beranda-right">
-            <div class="chart-wrap" style="margin-bottom:0">
+
+          <!-- Col 2: Transaksi terbaru -->
+          <div>
+            <div class="chart-wrap" style="margin-bottom:0;height:100%">
               <div class="chart-sub">Transaksi Terbaru</div>
-              <div class="tx-list" id="d-recent-list"></div>
+              <div class="tx-list" id="d-recent-list" style="max-height:480px;overflow-y:auto"></div>
+            </div>
+          </div>
+
+          <!-- Col 3: Grafik pengeluaran -->
+          <div>
+            <div class="chart-wrap" style="margin-bottom:0">
+              <div class="chart-sub">Pengeluaran per Kategori</div>
+              <canvas id="d-home-pie" height="200"></canvas>
+              <div class="legend" id="d-home-legend"></div>
             </div>
           </div>
         </div>
