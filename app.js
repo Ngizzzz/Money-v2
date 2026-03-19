@@ -945,16 +945,7 @@ function updateThemeButtons(theme) {
 }
 
 // ─── Sync Wallets to Sheets ──────────────────────────────────
-async function syncWalletsToSheets() {
-  if (!cfg.scriptUrl) return;
-  try {
-    await fetch(cfg.scriptUrl.trim(), {
-      method: 'POST',
-      body: JSON.stringify({ action: 'sync_wallets', wallets })
-    });
-    setSyncDot('ok');
-  } catch(e) { console.error('syncWallets:', e); }
-}
+
 
 // ─── Export CSV ───────────────────────────────────────────────
 function exportCSV() {
