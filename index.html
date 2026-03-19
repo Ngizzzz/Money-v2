@@ -385,6 +385,7 @@
         align-items: stretch;
         height: calc(100vh - 220px);
         min-height: 400px;
+        width: 100%;
       }
       .beranda-col {
         display: flex;
@@ -392,13 +393,17 @@
         min-width: 200px;
         overflow: hidden;
       }
+      #bcol-1 { flex: 0 0 380px; }
+      #bcol-2 { flex: 0 0 320px; }
+      #bcol-3 { flex: 1 1 0; min-width: 200px; }
       .beranda-col > .chart-wrap {
         flex: 1;
-        margin-bottom: 0;
+        margin: 0 10px 0 0;
         overflow: hidden;
         display: flex;
         flex-direction: column;
       }
+      #bcol-3 > .chart-wrap { margin-right: 0; }
       .beranda-col > .chart-wrap .tx-list { flex: 1; overflow-y: auto; }
       .col-resizer {
         width: 6px;
