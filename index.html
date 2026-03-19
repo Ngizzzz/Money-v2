@@ -426,8 +426,9 @@
       /* Form inputs desktop */
       .cat-grid { grid-template-columns: repeat(4, 1fr); }
 
-      /* Panels on desktop - already handled by base style */
-      .sheet-panel { max-width: 400px; }
+      /* Panels on desktop */
+      .sheet-panel { max-width: 400px; left: auto; right: -100%; }
+      .sheet-panel.open { right: 0; }
 
       /* Modals on desktop */
       .modal-overlay { align-items: center; }
