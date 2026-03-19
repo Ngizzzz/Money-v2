@@ -1257,3 +1257,503 @@ function setupPWAInstall() {
     }
   }
 }
+
+// ════════════════════════════════════════════════════════════════
+// DESKTOP LAYOUT
+// ════════════════════════════════════════════════════════════════
+const isDesktop = () => window.innerWidth >= 768;
+
+function initDesktop() {
+  if (!isDesktop()) return;
+  setupDesktopNav();
+  setupDesktopForm();
+  setupDesktopWallet();
+  setupDesktopLaporan();
+  syncDesktopButtons();
+  updateDesktopBalance();
+  renderDesktopRecent();
+  renderDesktopCharts();
+}
+
+// ─── Desktop Nav ──────────────────────────────────────────────
+let currentDPage = 'beranda';
+const dPageTitles = { beranda:'Beranda', dompet:'Dompet', riwayat:'Riwayat', laporan:'Laporan' };
+
+function setupDesktopNav() {
+  document.querySelectorAll('.sidebar-nav-btn').forEach(b => {
+    b.addEventListener('click', () => switchDPage(b.dataset.dpage));
+  });
+  btn('d-btn-settings', openSettings);
+  btn('d-btn-sync',    syncAll);
+  btn('d-btn-theme',   () => applyTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
+}
+
+function switchDPage(page) {
+  currentDPage = page;
+  document.querySelectorAll('.desktop-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.dpage === page));
+  const el = document.getElementById('dpage-'+page);
+  if (el) el.classList.add('active');
+  document.getElementById('d-page-title').textContent = dPageTitles[page] || page;
+  if (page === 'riwayat') renderDesktopHistory();
+  if (page === 'laporan') renderDesktopCharts();
+  if (page === 'dompet')  renderDesktopWallet();
+}
+
+// ─── Desktop Balance ──────────────────────────────────────────
+function updateDesktopBalance() {
+  if (!isDesktop()) return;
+  const inc = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const countedItems = wallets.flatMap(cat => cat.items.filter(i => i.counted !== false));
+  const bal = countedItems.length > 0
+    ? countedItems.reduce((s, item) => s + calcWalletBalance(item), 0)
+    : inc - exp;
+
+  const el = document.getElementById('d-balance-val');
+  if (el) { el.textContent = (bal<0?'- ':'')+fmt(bal); el.classList.toggle('negative', bal<0); }
+  const ti = document.getElementById('d-total-in');
+  const to = document.getElementById('d-total-out');
+  if (ti) ti.textContent = fmt(inc);
+  if (to) to.textContent = fmt(exp);
+
+  // Sync dot
+  const cl = document.getElementById('d-conn-label');
+  if (cl) cl.textContent = cfg.scriptUrl ? '● Terhubung' : 'Belum terhubung';
+  if (cl) cl.style.color = cfg.scriptUrl ? 'var(--mint)' : 'var(--t3)';
+}
+
+// ─── Desktop Form ─────────────────────────────────────────────
+let dCurrentType = 'expense';
+let dSelectedCat = '';
+
+function setupDesktopForm() {
+  btn('d-btn-save', saveDesktopTx);
+  btn('d-btn-add-tx', () => { switchDPage('beranda'); document.getElementById('d-inp-amount')?.focus(); });
+  btn('d-tbtn-expense',  () => setDType('expense'));
+  btn('d-tbtn-income',   () => setDType('income'));
+  btn('d-tbtn-transfer', () => setDType('transfer'));
+  // Set default date
+  const dd = document.getElementById('d-inp-date');
+  if (dd) dd.value = new Date().toISOString().split('T')[0];
+  renderDCats();
+  populateDesktopWalletSelects();
+}
+
+function setDType(type) {
+  dCurrentType = type;
+  dSelectedCat = '';
+  ['expense','income','transfer'].forEach(t => {
+    const b = document.getElementById('d-tbtn-'+t);
+    if (b) b.classList.toggle('active', t===type);
+  });
+  const catSection    = document.getElementById('d-cat-section');
+  const singleRow     = document.getElementById('d-wallet-single-row');
+  const transferRows  = document.getElementById('d-wallet-transfer-rows');
+  if (type === 'transfer') {
+    if (catSection)   catSection.style.display   = 'none';
+    if (singleRow)    singleRow.style.display    = 'none';
+    if (transferRows) transferRows.style.display = 'block';
+  } else {
+    if (catSection)   catSection.style.display   = 'block';
+    if (singleRow)    singleRow.style.display    = 'flex';
+    if (transferRows) transferRows.style.display = 'none';
+  }
+  const saveBtn = document.getElementById('d-btn-save');
+  if (saveBtn) {
+    saveBtn.className = 'btn-save '+type;
+    saveBtn.textContent = type==='expense'?'+ Simpan Pengeluaran':type==='income'?'+ Simpan Pemasukan':'↔ Simpan Transfer';
+  }
+  renderDCats();
+  populateDesktopWalletSelects();
+}
+
+function renderDCats() {
+  const grid = document.getElementById('d-cat-grid');
+  if (!grid) return;
+  const cats = CATS[dCurrentType] || [];
+  grid.innerHTML = cats.map(c => `
+    <button class="cat-btn ${c.id===dSelectedCat?'sel '+dCurrentType:''}" data-cat="${c.id}">
+      <span class="ci">${c.icon}</span>${c.label}
+    </button>`).join('');
+  grid.querySelectorAll('.cat-btn').forEach(b =>
+    b.addEventListener('click', () => { dSelectedCat=b.dataset.cat; renderDCats(); })
+  );
+}
+
+function populateDesktopWalletSelects() {
+  const makeOpts = (skipId='') => '<option value="" disabled selected>Pilih dompet...</option>' +
+    wallets.map(cat => `<optgroup label="${cat.icon} ${cat.name}">` +
+      cat.items.filter(i=>i.id!==skipId).map(i =>
+        `<option value="${i.id}">${i.name} (${fmt(calcWalletBalance(i))})</option>`
+      ).join('') + '</optgroup>'
+    ).join('');
+
+  const ids = ['d-inp-wallet','d-inp-wallet-from','d-inp-wallet-to'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=makeOpts(); });
+  const wf = document.getElementById('d-inp-wallet-from');
+  const wt = document.getElementById('d-inp-wallet-to');
+  if (wf) wf.addEventListener('change', () => { if(wt) wt.innerHTML=makeOpts(wf.value); });
+}
+
+async function saveDesktopTx() {
+  const amount   = parseFloat(document.getElementById('d-inp-amount')?.value);
+  const date     = document.getElementById('d-inp-date')?.value;
+  const note     = document.getElementById('d-inp-note')?.value.trim() || '';
+  const walletId = document.getElementById('d-inp-wallet')?.value || '';
+  const wFrom    = document.getElementById('d-inp-wallet-from')?.value || '';
+  const wTo      = document.getElementById('d-inp-wallet-to')?.value || '';
+
+  if (!amount || amount<=0) return toast('Masukkan jumlah yang valid','error');
+  if (!date) return toast('Pilih tanggal','error');
+  if (dCurrentType !== 'transfer' && !dSelectedCat) return toast('Pilih kategori','error');
+  if (dCurrentType !== 'transfer' && !walletId) return toast('Pilih dompet','error');
+  if (dCurrentType === 'transfer' && (!wFrom || !wTo)) return toast('Pilih dompet asal & tujuan','error');
+  if (dCurrentType === 'transfer' && wFrom===wTo) return toast('Dompet asal & tujuan harus berbeda','error');
+
+  let tx;
+  if (dCurrentType === 'transfer') {
+    const fi = findWalletItem(wFrom), ti = findWalletItem(wTo);
+    tx = { id:Date.now().toString(), type:'transfer', amount, date, note,
+      label:`Transfer: ${fi?.name||wFrom} → ${ti?.name||wTo}`, icon:'↔',
+      walletFrom:wFrom, walletTo:wTo, synced:false };
+  } else {
+    const ci = catInfo(dSelectedCat);
+    tx = { id:Date.now().toString(), type:dCurrentType, amount, date, note,
+      category:dSelectedCat, label:ci.label, icon:ci.icon, walletId, synced:false };
+  }
+
+  txs.unshift(tx);
+  persist();
+  updateBalance(); updateDesktopBalance();
+  renderDesktopRecent(); renderRecent();
+  populateDesktopWalletSelects(); populateWalletSelects();
+  if (currentDPage==='dompet') renderDesktopWallet();
+  if (currentDPage==='riwayat') renderDesktopHistory();
+
+  document.getElementById('d-inp-amount').value = '';
+  document.getElementById('d-inp-note').value   = '';
+  dSelectedCat=''; renderDCats();
+  toast('✓ Tersimpan!','success');
+  if (cfg.scriptUrl) syncTxToSheets([tx]);
+  syncWalletBalancesAfterTx();
+}
+
+// ─── Desktop Recent ───────────────────────────────────────────
+function renderDesktopRecent() {
+  const el = document.getElementById('d-recent-list');
+  if (!el) return;
+  const sorted = [...txs].sort((a,b)=>b.date!==a.date?b.date.localeCompare(a.date):b.id.localeCompare(a.id));
+  renderTxListInto(el, sorted.slice(0,8));
+}
+
+// ─── Desktop History ──────────────────────────────────────────
+function renderDesktopHistory() {
+  const el = document.getElementById('d-history-list');
+  if (!el) return;
+  populateDesktopFilters();
+  const month = document.getElementById('d-f-month')?.value || '';
+  const cat   = document.getElementById('d-f-cat')?.value   || '';
+  let list = [...txs].sort((a,b)=>b.date!==a.date?b.date.localeCompare(a.date):b.id.localeCompare(a.id));
+  if (month) list = list.filter(t=>t.date.startsWith(month));
+  if (cat)   list = list.filter(t=>t.category===cat||t.type===cat);
+  renderTxListInto(el, list);
+  const fm = document.getElementById('d-f-month');
+  const fc = document.getElementById('d-f-cat');
+  if (fm) fm.onchange = renderDesktopHistory;
+  if (fc) fc.onchange = renderDesktopHistory;
+}
+
+function populateDesktopFilters() {
+  const months = [...new Set(txs.map(t=>t.date.slice(0,7)))].sort().reverse();
+  const mSel = document.getElementById('d-f-month'); if(!mSel) return;
+  const cur=mSel.value;
+  mSel.innerHTML = '<option value="">Semua Bulan</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${fmtMon(m)}</option>`).join('');
+  const cSel=document.getElementById('d-f-cat'); if(!cSel) return;
+  const curC=cSel.value;
+  const cats=[...new Set(txs.filter(t=>t.category).map(t=>t.category))];
+  cSel.innerHTML='<option value="">Semua Kategori</option>'+cats.map(c=>{const i=catInfo(c);return`<option value="${c}" ${c===curC?'selected':''}>${i.icon} ${i.label}</option>`;}).join('');
+}
+
+function renderTxListInto(container, list) {
+  if (!list.length) { container.innerHTML='<div class="empty">Belum ada transaksi.</div>'; return; }
+  container.innerHTML = list.map(tx => {
+    const wLabel = tx.type==='transfer' ? '' : (tx.walletId ? ` · ${findWalletItem(tx.walletId)?.name||''}` : '');
+    return `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
+      <div class="tx-ico ${tx.type}">${tx.icon||'📦'}</div>
+      <div class="tx-body">
+        <div class="tx-cat">${tx.label}</div>
+        <div class="tx-meta">${tx.note||tx.date}${wLabel}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt ${tx.type}">${tx.type==='expense'?'- ':tx.type==='income'?'+':'↔'}${fmt(tx.amount)}</div>
+        <div class="tx-date">${fmtDate(tx.date)}</div>
+      </div>
+      <button class="tx-del" data-id="${tx.id}">✕</button>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.tx-item').forEach(item => {
+    item.addEventListener('click', e => { if(e.target.closest('.tx-del')) return; openEditTx(item.dataset.txId); });
+  });
+  container.querySelectorAll('.tx-del').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id=b.dataset.id;
+      txs=txs.filter(t=>t.id!==id);
+      persist(); updateBalance(); updateDesktopBalance();
+      renderDesktopRecent(); renderRecent();
+      populateDesktopWalletSelects(); populateWalletSelects();
+      if(currentDPage==='riwayat') renderDesktopHistory();
+      if(currentDPage==='dompet')  renderDesktopWallet();
+      if(cfg.scriptUrl) deleteTxFromSheets(id);
+      syncWalletBalancesAfterTx();
+    })
+  );
+}
+
+// ─── Desktop Wallet ───────────────────────────────────────────
+function setupDesktopWallet() {
+  btn('d-btn-add-wallet-cat', () => openModalWcat());
+}
+
+function renderDesktopWallet() {
+  const el = document.getElementById('d-wallet-cats-list');
+  if (!el) return;
+  // Reuse mobile wallet render but target desktop containers
+  let totalCounted=0, totalAll=0;
+  wallets.forEach(cat => cat.items.forEach(item => {
+    const bal=calcWalletBalance(item);
+    totalAll+=bal;
+    if(item.counted!==false) totalCounted+=bal;
+  }));
+  const tc=document.getElementById('d-w-total-counted');
+  const ta=document.getElementById('d-w-total-all');
+  if(tc) tc.textContent=fmt(totalCounted);
+  if(ta) ta.textContent=fmt(totalAll);
+
+  if(!wallets.length){el.innerHTML='<div class="empty">Belum ada dompet.</div>';return;}
+  el.innerHTML = wallets.map(cat=>{
+    const catTotal=cat.items.reduce((s,i)=>s+calcWalletBalance(i),0);
+    return `<div class="wallet-cat-card">
+      <div class="wallet-cat-hdr" data-catid="${cat.id}">
+        <div class="wallet-cat-hdr-left">
+          <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
+          <div class="wallet-cat-info">
+            <div class="wallet-cat-name">${cat.name}</div>
+            <div class="wallet-cat-total">${fmt(catTotal)}</div>
+          </div>
+        </div>
+        <div class="wallet-cat-actions">
+          <button class="wallet-item-btn" data-edit-cat="${cat.id}">✏️</button>
+          <button class="wallet-item-btn del" data-del-cat="${cat.id}">🗑️</button>
+          <span class="wcat-toggle" data-toggle="${cat.id}">▼</span>
+        </div>
+      </div>
+      <div class="wallet-items" id="dwcat-items-${cat.id}">
+        ${cat.items.map(item=>{
+          const bal=calcWalletBalance(item);
+          const counted=item.counted!==false;
+          return `<div class="wallet-item">
+            <div class="wallet-item-left">
+              <div class="wallet-item-name">${item.name}</div>
+              <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
+            </div>
+            <div class="wallet-item-right">
+              <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
+              <span class="counted-badge ${counted?'yes':'no'}">${counted?'✓ Dihitung':'✗ Tidak'}</span>
+              <button class="wallet-item-btn" data-adjust="${item.id}">⚖️</button>
+              <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}">✏️</button>
+              <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}">🗑️</button>
+            </div>
+          </div>`;
+        }).join('')}
+        <button class="wallet-add-item-btn" data-add-item="${cat.id}">＋ Tambah ${cat.name}</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Wire up all wallet interactions (same as mobile)
+  el.querySelectorAll('.wallet-cat-hdr').forEach(hdr=>{
+    hdr.addEventListener('click',e=>{
+      if(e.target.closest('button')) return;
+      const id=hdr.dataset.catid;
+      const items=document.getElementById('dwcat-items-'+id);
+      const tog=hdr.querySelector('.wcat-toggle');
+      const isOpen=items.classList.contains('open');
+      el.querySelectorAll('.wallet-items').forEach(x=>x.classList.remove('open'));
+      el.querySelectorAll('.wcat-toggle').forEach(x=>x.classList.remove('open'));
+      if(!isOpen){items.classList.add('open');tog.classList.add('open');}
+    });
+  });
+  el.querySelectorAll('[data-edit-cat]').forEach(b=>b.addEventListener('click',()=>openModalWcat(b.dataset.editCat)));
+  el.querySelectorAll('[data-del-cat]').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('Hapus kategori ini?')) return;
+    wallets=wallets.filter(c=>c.id!==b.dataset.delCat);
+    persist(); renderDesktopWallet(); renderWalletPage();
+    populateWalletSelects(); populateDesktopWalletSelects();
+    if(cfg.scriptUrl) syncWalletsToSheets();
+    toast('Kategori dihapus');
+  }));
+  el.querySelectorAll('[data-add-item]').forEach(b=>b.addEventListener('click',()=>openModalWitem(b.dataset.addItem)));
+  el.querySelectorAll('[data-edit-item]').forEach(b=>b.addEventListener('click',()=>openModalWitem(b.dataset.cat,b.dataset.editItem)));
+  el.querySelectorAll('[data-del-item]').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('Hapus dompet ini?')) return;
+    const cat=wallets.find(c=>c.id===b.dataset.cat);
+    if(cat) cat.items=cat.items.filter(i=>i.id!==b.dataset.delItem);
+    persist(); renderDesktopWallet(); renderWalletPage();
+    populateWalletSelects(); populateDesktopWalletSelects();
+    if(cfg.scriptUrl) syncWalletsToSheets();
+    toast('Dompet dihapus');
+  }));
+  el.querySelectorAll('[data-adjust]').forEach(b=>b.addEventListener('click',()=>openModalAdjust(b.dataset.adjust)));
+}
+
+// ─── Desktop Charts ───────────────────────────────────────────
+function setupDesktopLaporan() {
+  // Filter tabs
+  document.querySelectorAll('#dpage-laporan .lf-tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      laporanPeriod=tab.dataset.period;
+      document.querySelectorAll('#dpage-laporan .lf-tab').forEach(t=>t.classList.remove('active'));
+      tab.classList.add('active');
+      const cr=document.getElementById('d-laporan-custom-range');
+      if(cr) cr.style.display=laporanPeriod==='custom'?'flex':'none';
+      updateDesktopLaporanInfo();
+      renderDesktopCharts();
+    });
+  });
+  const df=document.getElementById('d-laporan-date-from');
+  const dt=document.getElementById('d-laporan-date-to');
+  if(df) df.addEventListener('change',()=>{ laporanDateFrom=df.value; renderDesktopCharts(); });
+  if(dt) dt.addEventListener('change',()=>{ laporanDateTo=dt.value; renderDesktopCharts(); });
+}
+
+function updateDesktopLaporanInfo() {
+  const el=document.getElementById('d-laporan-filter-info');
+  if(!el) return;
+  const now=new Date();
+  if(laporanPeriod==='month') el.textContent=now.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  else if(laporanPeriod==='year') el.textContent='Tahun '+now.getFullYear();
+  else if(laporanPeriod==='custom') el.textContent=(laporanDateFrom&&laporanDateTo)?fmtDate(laporanDateFrom)+' – '+fmtDate(laporanDateTo):'Pilih rentang tanggal';
+  else el.textContent='Semua waktu';
+}
+
+function renderDesktopCharts() {
+  if(!isDesktop()) return;
+  updateDesktopLaporanInfo();
+  renderDonutInto('expense','d-c-pie-expense','d-legend-expense');
+  renderDonutInto('income', 'd-c-pie-income', 'd-legend-income');
+  renderWalletDonutInto('d-c-pie-wallet','d-legend-wallet');
+  renderBarInto('d-c-bar');
+}
+
+function renderDonutInto(type, canvasId, legendId) {
+  const canvas=document.getElementById(canvasId); if(!canvas) return;
+  const W=canvas.offsetWidth||400; canvas.width=W;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
+  const isExp=type==='expense';
+  const filtered=getFilteredTxsForLaporan().filter(t=>t.type===type);
+  const totals={}; filtered.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
+  const labels=Object.keys(totals),data=Object.values(totals);
+  const total=data.reduce((a,b)=>a+b,0);
+  const legend=document.getElementById(legendId);
+  if(!total){ctx.fillStyle='#4a4858';ctx.font='13px Syne';ctx.textAlign='center';ctx.fillText('Belum ada data',W/2,90);if(legend)legend.innerHTML='';return;}
+  const cx=90,cy=88,r=70; let angle=-Math.PI/2;
+  data.forEach((v,i)=>{
+    const slice=(v/total)*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();angle+=slice;
+  });
+  const bgC=document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
+  ctx.beginPath();ctx.arc(cx,cy,r*0.52,0,Math.PI*2);ctx.fillStyle=bgC;ctx.fill();
+  ctx.fillStyle='#eeeae2';ctx.textAlign='center';ctx.font='500 11px Syne';ctx.fillText(isExp?'Keluar':'Masuk',cx,cy-5);
+  ctx.font='500 12px JetBrains Mono';ctx.fillStyle=isExp?'#f54e6a':'#4ef5b0';
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
+  labels.slice(0,5).forEach((lbl,i)=>{
+    const pct=Math.round(data[i]/total*100);
+    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fillRect(W-130,22+i*30,8,8);
+    ctx.fillStyle='#8a8799';ctx.font='10px Syne';ctx.textAlign='left';ctx.fillText(lbl,W-118,30+i*30);
+    ctx.fillStyle='#eeeae2';ctx.font='500 10px JetBrains Mono';ctx.fillText(pct+'%',W-118,42+i*30);
+  });
+  if(legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+}
+
+function renderWalletDonutInto(canvasId, legendId) {
+  const canvas=document.getElementById(canvasId); if(!canvas) return;
+  const W=canvas.offsetWidth||400; canvas.width=W;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
+  const legend=document.getElementById(legendId);
+  const items=allWalletItems();
+  const labels=[],data=[];
+  items.forEach(item=>{const bal=calcWalletBalance(item);if(bal>0){labels.push(item.name);data.push(bal);}});
+  const total=data.reduce((a,b)=>a+b,0);
+  if(!total){ctx.fillStyle='#4a4858';ctx.font='13px Syne';ctx.textAlign='center';ctx.fillText('Belum ada dompet',W/2,90);if(legend)legend.innerHTML='';return;}
+  const cx=90,cy=88,r=70;let angle=-Math.PI/2;
+  data.forEach((v,i)=>{const slice=(v/total)*Math.PI*2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();angle+=slice;});
+  const bgC=document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
+  ctx.beginPath();ctx.arc(cx,cy,r*0.52,0,Math.PI*2);ctx.fillStyle=bgC;ctx.fill();
+  ctx.fillStyle='#eeeae2';ctx.textAlign='center';ctx.font='500 11px Syne';ctx.fillText('Total',cx,cy-5);
+  ctx.font='500 12px JetBrains Mono';ctx.fillStyle='#d4f54e';
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
+  labels.slice(0,5).forEach((lbl,i)=>{const pct=Math.round(data[i]/total*100);ctx.fillStyle=COLORS[i%COLORS.length];ctx.fillRect(W-130,22+i*30,8,8);ctx.fillStyle='#8a8799';ctx.font='10px Syne';ctx.textAlign='left';ctx.fillText(lbl,W-118,30+i*30);ctx.fillStyle='#eeeae2';ctx.font='500 10px JetBrains Mono';ctx.fillText(pct+'%',W-118,42+i*30);});
+  if(legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+}
+
+function renderBarInto(canvasId) {
+  const canvas=document.getElementById(canvasId); if(!canvas) return;
+  const W=canvas.offsetWidth||400; canvas.width=W;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
+  const filtered=getFilteredTxsForLaporan();
+  const months=[];
+  for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
+  const inc=months.map(m=>filtered.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const exp=months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const max=Math.max(...inc,...exp,1);
+  const pL=10,pR=10,pB=24,pT=14,cW=W-pL-pR,cH=180-pB-pT,gW=cW/months.length,bW=gW*0.3;
+  months.forEach((m,i)=>{
+    const x=pL+i*gW+gW*0.08,iH=(inc[i]/max)*cH,eH=(exp[i]/max)*cH;
+    ctx.fillStyle='#4ef5b0';ctx.fillRect(x,pT+cH-iH,bW,iH);
+    ctx.fillStyle='#f54e6a';ctx.fillRect(x+bW+2,pT+cH-eH,bW,eH);
+    const d=new Date(m+'-01');ctx.fillStyle='#4a4858';ctx.font='9px Syne';ctx.textAlign='center';
+    ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}),x+bW,180-6);
+  });
+  ctx.fillStyle='#4ef5b0';ctx.fillRect(W-110,5,8,8);ctx.fillStyle='#8a8799';ctx.font='9px Syne';ctx.textAlign='left';ctx.fillText('Pemasukan',W-98,13);
+  ctx.fillStyle='#f54e6a';ctx.fillRect(W-110,19,8,8);ctx.fillStyle='#8a8799';ctx.fillText('Pengeluaran',W-98,27);
+}
+
+// ─── Sync desktop buttons with mobile theme ───────────────────
+function syncDesktopButtons() {
+  // Mirror theme button state
+  const origApply = applyTheme;
+}
+
+// ─── Hook into existing updateBalance ────────────────────────
+const _origUpdateBalance = updateBalance;
+window._updateBalanceHooked = true;
+
+// Override updateBalance to also update desktop
+const __origUpdateBalance = updateBalance;
+function updateBalance() {
+  __origUpdateBalance();
+  updateDesktopBalance();
+}
+
+// ─── Hook into loadFromSheets to also update desktop ─────────
+const _origLoadFromSheets = loadFromSheets;
+
+// ─── Init desktop on load + resize ───────────────────────────
+window.addEventListener('resize', () => {
+  if(isDesktop()) {
+    updateDesktopBalance();
+    renderDesktopRecent();
+    if(currentDPage==='riwayat') renderDesktopHistory();
+    if(currentDPage==='laporan') renderDesktopCharts();
+    if(currentDPage==='dompet')  renderDesktopWallet();
+  }
+});
+
+// Call initDesktop after boot
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if(isDesktop()) initDesktop();
+  }, 100);
+});
