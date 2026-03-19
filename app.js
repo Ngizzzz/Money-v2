@@ -929,8 +929,19 @@ function setupSettings() {
   if(el) el.value=cfg.scriptUrl||'';
   updateThemeButtons(localStorage.getItem('theme')||'dark');
 }
-function openSettings()  { document.getElementById('settings-panel').classList.add('open'); }
-function closeSettings() { document.getElementById('settings-panel').classList.remove('open'); }
+function openSettings() {
+  const panel = document.getElementById('settings-panel');
+  panel.classList.add('open');
+  // On desktop, make sure it's on top and scrollable
+  if (isDesktop()) {
+    panel.style.cssText = 'transform:none; z-index:50; pointer-events:all;';
+  }
+}
+function closeSettings() {
+  const panel = document.getElementById('settings-panel');
+  panel.classList.remove('open');
+  if (isDesktop()) panel.style.cssText = '';
+}
 function saveSettings() {
   cfg.scriptUrl=document.getElementById('inp-scripturl').value.trim();
   persist(); updateConnBadge(); toast('✓ Pengaturan disimpan!','success');
@@ -1283,7 +1294,14 @@ function setupDesktopNav() {
   document.querySelectorAll('.sidebar-nav-btn').forEach(b => {
     b.addEventListener('click', () => switchDPage(b.dataset.dpage));
   });
-  btn('d-btn-settings', openSettings);
+  btn('d-btn-settings', () => {
+    openSettings();
+    // Prefill scriptUrl
+    const el = document.getElementById('inp-scripturl');
+    if (el) el.value = cfg.scriptUrl || '';
+    updateConnBadge();
+    updateThemeButtons(localStorage.getItem('theme')||'dark');
+  });
   btn('d-btn-sync',    syncAll);
   btn('d-btn-theme',   () => applyTheme(document.documentElement.classList.contains('light') ? 'dark' : 'light'));
 }
