@@ -47,13 +47,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   if (cfg.scriptUrl) await loadFromSheets();
   setInterval(async () => {
-    if (cfg.scriptUrl && !modalOpen) {
+    if (cfg.scriptUrl && !modalOpen && !isFormActive()) {
       console.log('[Money] auto-refresh:', new Date().toLocaleTimeString());
       await loadFromSheets();
     }
   }, 15000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.scriptUrl && !modalOpen) loadFromSheets(); });
-  window.addEventListener('focus', () => { if (cfg.scriptUrl && !modalOpen) loadFromSheets(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.scriptUrl && !modalOpen && !isFormActive()) loadFromSheets(); });
+  window.addEventListener('focus', () => { if (cfg.scriptUrl && !modalOpen && !isFormActive()) loadFromSheets(); });
 });
 
 // ─── Cookie helpers ───────────────────────────────────────────
@@ -128,7 +128,8 @@ function findWalletItem(id) {
 // ─── Populate wallet selects ──────────────────────────────────
 function populateWalletSelects() {
   const items = allWalletItems();
-  const makeOptions = (skipId='') => '<option value="">-- Tanpa Dompet --</option>' +
+  const makeOptions = (skipId='', withBlank=false) => 
+    (withBlank ? '<option value="">-- Pilih --</option>' : '<option value="" disabled selected>Pilih dompet...</option>') +
     wallets.map(cat => `<optgroup label="${cat.icon} ${cat.name}">` +
       cat.items.filter(i=>i.id!==skipId).map(i =>
         `<option value="${i.id}">${i.name} (${fmt(calcWalletBalance(i))})</option>`
@@ -138,9 +139,9 @@ function populateWalletSelects() {
   const single = document.getElementById('inp-wallet');
   const from   = document.getElementById('inp-wallet-from');
   const to     = document.getElementById('inp-wallet-to');
-  if (single) single.innerHTML = makeOptions();
-  if (from)   from.innerHTML   = makeOptions();
-  if (to)     to.innerHTML     = makeOptions();
+  if (single) single.innerHTML = makeOptions('', false);
+  if (from)   from.innerHTML   = makeOptions('', true);
+  if (to)     to.innerHTML     = makeOptions('', true);
   if (from) from.addEventListener('change', () => {
     if (to) to.innerHTML = makeOptions(from.value);
   });
@@ -266,10 +267,14 @@ async function saveTransaction() {
 
   document.getElementById('inp-amount').value = '';
   document.getElementById('inp-note').value   = '';
+  document.getElementById('inp-wallet').value = '';
+  document.getElementById('inp-wallet-from').value = '';
+  document.getElementById('inp-wallet-to').value   = '';
   selectedCat = '';
   renderCats();
   toast('✓ Tersimpan!','success');
   if (cfg.scriptUrl) syncTxToSheets([tx]);
+  syncWalletBalancesAfterTx();
 }
 
 // ─── Render helpers ───────────────────────────────────────────
@@ -322,6 +327,7 @@ function renderTxList(container, list) {
       if (currentPage==='riwayat') renderHistory();
       if (currentPage==='dompet')  renderWalletPage();
       if (cfg.scriptUrl) deleteTxFromSheets(id);
+      syncWalletBalancesAfterTx();
     })
   );
 }
@@ -468,6 +474,22 @@ function setupModals() {
   );
 }
 let modalOpen = false;
+
+// Cek apakah user sedang aktif mengisi form transaksi
+function isFormActive() {
+  const amount = document.getElementById('inp-amount');
+  const note   = document.getElementById('inp-note');
+  const wFrom  = document.getElementById('inp-wallet-from');
+  const wTo    = document.getElementById('inp-wallet-to');
+  const wSingle= document.getElementById('inp-wallet');
+  // Aktif jika ada nilai di amount/note ATAU dropdown dompet sudah dipilih
+  if (amount && amount.value && parseFloat(amount.value) > 0) return true;
+  if (note   && note.value.trim()) return true;
+  if (wFrom  && wFrom.value)  return true;
+  if (wTo    && wTo.value)    return true;
+  if (wSingle && wSingle.value) return true;
+  return false;
+}
 function openModal(id)  {
   document.getElementById(id).classList.add('open');
   modalOpen = true;
@@ -593,7 +615,7 @@ function saveAdjustBalance() {
   closeModal('modal-adjust');
   toast(`✓ Selisih ${diff>0?'+':''}${fmt(diff)} dicatat`,'success');
   if (cfg.scriptUrl) syncTxToSheets([tx]);
-  if (cfg.scriptUrl) syncWalletsToSheets();
+  syncWalletBalancesAfterTx();
 }
 
 // ─── Charts ───────────────────────────────────────────────────
@@ -824,7 +846,6 @@ async function loadFromSheets() {
 async function syncWalletsToSheets() {
   if (!cfg.scriptUrl || !wallets.length) return;
   try {
-    // Tambahkan currentBalance ke setiap item sebelum dikirim
     const walletsWithBal = wallets.map(cat => ({
       ...cat,
       items: cat.items.map(item => ({
@@ -832,11 +853,20 @@ async function syncWalletsToSheets() {
         currentBalance: Math.round(calcWalletBalance(item))
       }))
     }));
-    await fetch(cfg.scriptUrl.trim(), {
+    const res = await fetch(cfg.scriptUrl.trim(), {
       method: 'POST',
       body: JSON.stringify({ action: 'sync_wallets', wallets: walletsWithBal })
     });
+    const data = await res.json();
+    if (!data.success) console.error('syncWalletsToSheets error:', data.error);
   } catch(e) { console.error('syncWalletsToSheets:', e); }
+}
+
+// Sync wallet balances setiap kali transaksi berubah
+function syncWalletBalancesAfterTx() {
+  if (cfg.scriptUrl && wallets.length) {
+    setTimeout(() => syncWalletsToSheets(), 1000);
+  }
 }
 
 // ─── Settings ─────────────────────────────────────────────────
