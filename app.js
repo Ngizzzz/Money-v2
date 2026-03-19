@@ -932,15 +932,9 @@ function setupSettings() {
 function openSettings() {
   const panel = document.getElementById('settings-panel');
   panel.classList.add('open');
-  // On desktop, make sure it's on top and scrollable
-  if (isDesktop()) {
-    panel.style.cssText = 'transform:none; z-index:50; pointer-events:all;';
-  }
 }
 function closeSettings() {
-  const panel = document.getElementById('settings-panel');
-  panel.classList.remove('open');
-  if (isDesktop()) panel.style.cssText = '';
+  document.getElementById('settings-panel').classList.remove('open');
 }
 function saveSettings() {
   cfg.scriptUrl=document.getElementById('inp-scripturl').value.trim();
@@ -1349,30 +1343,93 @@ function updateDesktopBalance() {
 
 function renderHomePie() {
   const canvas = document.getElementById('d-home-pie'); if (!canvas) return;
-  const W = canvas.offsetWidth || 300; canvas.width = W;
-  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,200);
+  const container = canvas.parentElement;
+  const W = container.offsetWidth || 300;
+  const H = 260;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
   const legend = document.getElementById('d-home-legend');
+
   const exp = txs.filter(t=>t.type==='expense');
   const totals = {}; exp.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
   const labels = Object.keys(totals), data = Object.values(totals);
   const total = data.reduce((a,b)=>a+b,0);
+
   if (!total) {
-    ctx.fillStyle='#4a4858'; ctx.font='12px Syne'; ctx.textAlign='center';
-    ctx.fillText('Belum ada pengeluaran', W/2, 100);
+    ctx.fillStyle='#4a4858'; ctx.font='13px Syne'; ctx.textAlign='center';
+    ctx.fillText('Belum ada pengeluaran', W/2, H/2);
     if (legend) legend.innerHTML=''; return;
   }
-  const cx=W/2, cy=95, r=72; let angle=-Math.PI/2;
-  data.forEach((v,i)=>{
-    const slice=(v/total)*Math.PI*2;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
-    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fill(); angle+=slice;
+
+  // Donut centered
+  const cx = W/2, cy = H/2, r = Math.min(W, H) * 0.34;
+  const innerR = r * 0.54;
+  let angle = -Math.PI/2;
+
+  // Draw slices
+  data.forEach((v,i) => {
+    const slice = (v/total) * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
+    angle += slice;
   });
-  const bgC = document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
-  ctx.fillStyle='#eeeae2'; ctx.textAlign='center'; ctx.font='500 11px Syne'; ctx.fillText('Keluar',cx,cy-5);
-  ctx.font='500 12px JetBrains Mono'; ctx.fillStyle='#f54e6a';
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
-  if (legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l} (${Math.round(data[i]/total*100)}%)</div>`).join('');
+
+  // Donut hole
+  const bgC = document.documentElement.classList.contains('light') ? '#ffffff' : '#14141a';
+  ctx.beginPath(); ctx.arc(cx,cy,innerR,0,Math.PI*2);
+  ctx.fillStyle = bgC; ctx.fill();
+
+  // Center text
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8a8799'; ctx.font = '11px Syne';
+  ctx.fillText('Total', cx, cy - 8);
+  ctx.fillStyle = '#f54e6a';
+  ctx.font = '600 14px JetBrains Mono';
+  ctx.fillText(total>=1e6 ? 'Rp '+(total/1e6).toFixed(1)+'jt' : fmt(total), cx, cy+10);
+
+  // External labels with leader lines (like reference image)
+  angle = -Math.PI/2;
+  data.forEach((v,i) => {
+    const slice = (v/total)*Math.PI*2;
+    const pct = Math.round(v/total*100);
+    const midAngle = angle + slice/2;
+    const labelR = r * 1.35;
+    const lx = cx + Math.cos(midAngle) * labelR;
+    const ly = cy + Math.sin(midAngle) * labelR;
+    const lineStartX = cx + Math.cos(midAngle) * (r+4);
+    const lineStartY = cy + Math.sin(midAngle) * (r+4);
+    const lineEndX   = cx + Math.cos(midAngle) * (r+18);
+    const lineEndY   = cy + Math.sin(midAngle) * (r+18);
+
+    // Leader line
+    ctx.beginPath(); ctx.moveTo(lineStartX,lineStartY);
+    ctx.lineTo(lineEndX,lineEndY);
+    ctx.strokeStyle = COLORS[i%COLORS.length]; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Horizontal line
+    const dir = lx > cx ? 1 : -1;
+    ctx.beginPath(); ctx.moveTo(lineEndX,lineEndY);
+    ctx.lineTo(lineEndX + dir*16, lineEndY);
+    ctx.strokeStyle = COLORS[i%COLORS.length]; ctx.lineWidth=1.5; ctx.stroke();
+
+    // Percentage bold
+    ctx.textAlign = lx > cx ? 'left' : 'right';
+    const tx2 = lineEndX + dir*20;
+    ctx.fillStyle = COLORS[i%COLORS.length];
+    ctx.font = '700 13px Syne';
+    ctx.fillText(pct+'%', tx2, lineEndY - 2);
+
+    // Label below pct
+    ctx.fillStyle = '#8a8799';
+    ctx.font = '11px Syne';
+    ctx.fillText(labels[i], tx2, lineEndY + 12);
+
+    angle += slice;
+  });
+
+  // Hide old legend, using canvas labels instead
+  if (legend) legend.style.display = 'none';
 }
 
 // ─── Desktop Form ─────────────────────────────────────────────
