@@ -2252,11 +2252,17 @@ function setupLaporanColResizer(resizerId, leftId, rightId) {
   const right   = document.getElementById(rightId);
   if (!resizer || !left || !right) return;
 
-  // Restore saved
+  // Restore saved widths
   const sl = localStorage.getItem('lap-w-'+leftId);
   const sr = localStorage.getItem('lap-w-'+rightId);
   if (sl) left.style.flex  = '0 0 '+sl;
-  if (sr) right.style.flex = '0 0 '+sr;
+  // dcard-wallet (last col) always flex:1 to fill remaining space
+  if (rightId === 'dcard-wallet') {
+    right.style.flex = '1 1 0';
+    right.style.minWidth = '220px';
+  } else if (sr) {
+    right.style.flex = '0 0 '+sr;
+  }
 
   let startX, startLW, startRW;
   resizer.addEventListener('mousedown', e => {
