@@ -2075,33 +2075,82 @@ function roundRect(ctx, x, y, w, h, radii) {
 }
 
 function renderBarInto(canvasId) {
-  const canvas=document.getElementById(canvasId); if(!canvas) return;
-  // Use parent container size for proper fit
-  const parent = canvas.parentElement;
+  const canvas = document.getElementById(canvasId); if (!canvas) return;
+  const parent  = canvas.parentElement;
   const titleEl = parent?.querySelector('.ldc-title,.chart-sub');
-  const titleH  = titleEl ? titleEl.offsetHeight + 8 : 24;
-  const W = parent ? parent.clientWidth  - 28 : (canvas.offsetWidth  || 400);
-  const H = parent ? Math.max(120, parent.clientHeight - titleH - 20) : (canvas.offsetHeight || 160);
+  const titleH  = titleEl ? titleEl.offsetHeight + 12 : 28;
+  const W = parent ? Math.max(200, parent.clientWidth  - 32) : 400;
+  const H = parent ? Math.max(140, parent.clientHeight - titleH - 16) : 200;
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
-  canvas.width=W; canvas.height=H;
-  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
-  const filtered=getFilteredTxsForLaporan();
-  const months=[];
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+
+  const filtered = getFilteredTxsForLaporan();
+  const months = [];
   for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
-  const inc=months.map(m=>filtered.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const exp=months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const max=Math.max(...inc,...exp,1);
-  const pL=10,pR=10,pB=24,pT=14,cW=W-pL-pR,cH=180-pB-pT,gW=cW/months.length,bW=gW*0.3;
-  months.forEach((m,i)=>{
-    const x=pL+i*gW+gW*0.08,iH=(inc[i]/max)*cH,eH=(exp[i]/max)*cH;
-    ctx.fillStyle='#4ef5b0';ctx.fillRect(x,pT+cH-iH,bW,iH);
-    ctx.fillStyle='#f54e6a';ctx.fillRect(x+bW+2,pT+cH-eH,bW,eH);
-    const d=new Date(m+'-01');ctx.fillStyle='#4a4858';ctx.font='9px Syne';ctx.textAlign='center';
-    ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}),x+bW,180-6);
+  const inc = months.map(m=>filtered.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const exp = months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
+  const maxVal = Math.max(...inc,...exp,1);
+
+  const pL=56, pR=20, pB=40, pT=24;
+  const cW=W-pL-pR, cH=H-pB-pT;
+  const gW=cW/months.length;
+  const bW = Math.max(8, Math.floor(gW*0.28));
+  const barGap = Math.max(4, Math.floor(bW*0.2));
+  const groupW = bW*2 + barGap;
+
+  // Y axis grid lines & labels
+  const yTicks = 4;
+  for(let t=0;t<=yTicks;t++){
+    const y   = pT + cH*(1 - t/yTicks);
+    const val = (t/yTicks)*maxVal;
+    ctx.setLineDash([4,5]); ctx.lineWidth=0.8;
+    ctx.strokeStyle='rgba(138,135,153,0.2)';
+    ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(pL+cW,y); ctx.stroke();
+    ctx.setLineDash([]);
+    const lbl = val>=1e6?(val/1e6).toFixed(1)+'jt':val>=1e3?Math.round(val/1000)+'rb':'0';
+    ctx.fillStyle='#55535f'; ctx.font=`${Math.max(9,Math.round(H*0.055))}px JetBrains Mono`;
+    ctx.textAlign='right'; ctx.fillText(lbl, pL-8, y+4);
+  }
+
+  // Baseline
+  ctx.setLineDash([]); ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(138,135,153,0.35)';
+  ctx.beginPath(); ctx.moveTo(pL,pT+cH); ctx.lineTo(pL+cW,pT+cH); ctx.stroke();
+
+  // Bars
+  months.forEach((m,i) => {
+    const groupX = pL + i*gW + (gW-groupW)/2;
+    const iH = inc[i]>0 ? Math.max(2,(inc[i]/maxVal)*cH) : 0;
+    const eH = exp[i]>0 ? Math.max(2,(exp[i]/maxVal)*cH) : 0;
+    const baseY = pT+cH;
+    if(iH>0){
+      ctx.fillStyle='#4ef5b0';
+      roundRect(ctx, groupX, baseY-iH, bW, iH, [Math.min(4,bW/3),Math.min(4,bW/3),0,0]);
+      ctx.fill();
+    }
+    if(eH>0){
+      ctx.fillStyle='#f54e6a';
+      roundRect(ctx, groupX+bW+barGap, baseY-eH, bW, eH, [Math.min(4,bW/3),Math.min(4,bW/3),0,0]);
+      ctx.fill();
+    }
+    const d = new Date(m+'-01');
+    ctx.fillStyle='#8a8799';
+    ctx.font=`bold ${Math.max(9,Math.round(H*0.06))}px Syne`;
+    ctx.textAlign='center';
+    ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}).toUpperCase(), groupX+groupW/2, baseY+Math.max(16,H*0.08));
   });
-  ctx.fillStyle='#4ef5b0';ctx.fillRect(W-110,5,8,8);ctx.fillStyle='#8a8799';ctx.font='9px Syne';ctx.textAlign='left';ctx.fillText('Pemasukan',W-98,13);
-  ctx.fillStyle='#f54e6a';ctx.fillRect(W-110,19,8,8);ctx.fillStyle='#8a8799';ctx.fillText('Pengeluaran',W-98,27);
+
+  // Legend top right
+  const fs = Math.max(10, Math.round(H*0.065));
+  const sq = Math.max(8, Math.round(H*0.055));
+  const lx = W-130, ly = pT;
+  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx,ly,sq,sq);
+  ctx.fillStyle='#8a8799'; ctx.font=`${fs}px Syne`; ctx.textAlign='left';
+  ctx.fillText('Pemasukan', lx+sq+5, ly+sq-1);
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx,ly+sq+6,sq,sq);
+  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+5, ly+sq*2+5);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
