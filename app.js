@@ -326,6 +326,43 @@ function populateFilters() {
   const cats = [...new Set(txs.filter(t=>t.category).map(t=>t.category))];
   cSel.innerHTML = '<option value="">Semua Kategori</option>'+cats.map(c=>{const i=catInfo(c);return `<option value="${c}" ${c===curC?'selected':''}>${i.icon} ${i.label}</option>`;}).join('');
 }
+// Simple list without month separators (for recent/home)
+function renderTxListSimple(container, list) {
+  if (!list.length) { container.innerHTML='<div class="empty">Belum ada transaksi.</div>'; return; }
+  container.innerHTML = list.map(tx => {
+    const walletLabel = tx.type==='transfer' ? '' : (tx.walletId ? ` · ${findWalletItem(tx.walletId)?.name||''}` : '');
+    return `<div class="tx-item" data-tx-id="${tx.id}" style="cursor:pointer">
+      <div class="tx-ico ${tx.type}">${tx.icon||'📦'}</div>
+      <div class="tx-body">
+        <div class="tx-cat">${tx.label}</div>
+        <div class="tx-meta">${tx.note||tx.date}${walletLabel}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt ${tx.type}">${tx.type==='expense'?'- ':tx.type==='income'?'+':'↔'}${fmt(tx.amount)}</div>
+        <div class="tx-date">${fmtDate(tx.date)}</div>
+      </div>
+      <button class="tx-del" data-id="${tx.id}" title="Hapus">✕</button>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.tx-item').forEach(item => {
+    item.addEventListener('click', e => { if(e.target.closest('.tx-del')) return; openEditTx(item.dataset.txId); });
+  });
+  container.querySelectorAll('.tx-del').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.id;
+      txs = txs.filter(t=>t.id!==id);
+      persist(); updateBalance(); renderRecent();
+      populateWalletSelects(); populateDesktopWalletSelects();
+      if(currentPage==='riwayat') renderHistory();
+      if(currentDPage==='riwayat') renderDesktopHistory();
+      if(currentPage==='dompet') renderWalletPage();
+      if(currentDPage==='dompet') renderDesktopWallet();
+      if(cfg.scriptUrl) deleteTxFromSheets(id);
+      syncWalletBalancesAfterTx();
+    })
+  );
+}
+
 function renderTxList(container, list) {
   if (!list.length) { container.innerHTML='<div class="empty">Belum ada transaksi.</div>'; return; }
   let html = '';
@@ -1578,7 +1615,7 @@ function renderDesktopRecent() {
   const el = document.getElementById('d-recent-list');
   if (!el) return;
   const sorted = [...txs].sort((a,b)=>b.date!==a.date?b.date.localeCompare(a.date):b.id.localeCompare(a.id));
-  renderTxListInto(el, sorted.slice(0,8));
+  renderTxListSimple(el, sorted.slice(0,8));
   renderHomePie();
 }
 
