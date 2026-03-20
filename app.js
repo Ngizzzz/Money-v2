@@ -2192,34 +2192,38 @@ function setupBarBottomResizer(resizerId, barRowId) {
   if (!resizer || !barRow) return;
 
   const setH = (el, h) => {
-    el.style.cssText += `;height:${h}px;min-height:${h}px;max-height:${h}px;flex-shrink:0;flex-grow:0;flex-basis:${h}px`;
+    el.style.height    = h + 'px';
+    el.style.minHeight = h + 'px';
+    el.style.maxHeight = h + 'px';
+    el.style.flex      = '0 0 ' + h + 'px';
   };
 
-  let startY, startH;
   resizer.addEventListener('mousedown', e => {
-    e.preventDefault(); e.stopPropagation();
-    startY = e.clientY;
-    startH = barRow.getBoundingClientRect().height;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = barRow.offsetHeight;
     resizer.classList.add('dragging');
-    document.body.style.cssText += ';user-select:none;cursor:row-resize';
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:row-resize';
+    document.body.appendChild(overlay);
 
     const onMove = e => {
-      const newH = Math.max(140, Math.round(startH + (e.clientY - startY)));
+      const newH = Math.max(140, startH + (e.clientY - startY));
       setH(barRow, newH);
       clearTimeout(window._barBottomTimer);
-      window._barBottomTimer = setTimeout(() => renderLaporanDonutCard('dcard-cashflow'), 40);
+      window._barBottomTimer = setTimeout(() => renderLaporanDonutCard('dcard-cashflow'), 30);
     };
     const onUp = () => {
-      localStorage.setItem('lap-h-bottom', Math.round(barRow.getBoundingClientRect().height) + '');
+      localStorage.setItem('lap-h-bottom', barRow.offsetHeight + '');
       resizer.classList.remove('dragging');
-      document.body.style.userSelect = '';
-      document.body.style.cursor     = '';
+      document.body.removeChild(overlay);
       renderLaporanDonutCard('dcard-cashflow');
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
+      overlay.removeEventListener('mousemove', onMove);
+      overlay.removeEventListener('mouseup',   onUp);
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
+    overlay.addEventListener('mousemove', onMove);
+    overlay.addEventListener('mouseup',   onUp);
   });
 }
 
@@ -2230,47 +2234,49 @@ function setupLaporanRowResizer(resizerId, topId, bottomId) {
   if (!resizer || !top || !bottom) return;
 
   const setH = (el, h) => {
-    el.style.cssText += `;height:${h}px;min-height:${h}px;max-height:${h}px;flex-shrink:0;flex-grow:0;flex-basis:${h}px`;
+    el.style.height    = h + 'px';
+    el.style.minHeight = h + 'px';
+    el.style.maxHeight = h + 'px';
+    el.style.flex      = '0 0 ' + h + 'px';
   };
 
-  // Set initial heights
   const defaultH = 240;
   const savedT   = parseInt(localStorage.getItem('lap-h-top'))   || defaultH;
   const savedB   = parseInt(localStorage.getItem('lap-h-bottom')) || defaultH;
-  setH(top,    savedT);
-  setH(bottom, savedB);
-
-  let startY, startTH, startBH;
+  setH(top, savedT); setH(bottom, savedB);
 
   resizer.addEventListener('mousedown', e => {
-    e.preventDefault(); e.stopPropagation();
-    startY  = e.clientY;
-    startTH = top.getBoundingClientRect().height;
-    startBH = bottom.getBoundingClientRect().height;
+    e.preventDefault();
+    const startY  = e.clientY;
+    const startTH = top.offsetHeight;
+    const startBH = bottom.offsetHeight;
     resizer.classList.add('dragging');
-    document.body.style.cssText += ';user-select:none;cursor:row-resize';
+
+    // Overlay to capture all mouse events during drag
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:row-resize';
+    document.body.appendChild(overlay);
 
     const onMove = e => {
       const delta = e.clientY - startY;
-      setH(top,    Math.max(140, Math.round(startTH + delta)));
-      setH(bottom, Math.max(140, Math.round(startBH - delta)));
+      setH(top,    Math.max(140, startTH + delta));
+      setH(bottom, Math.max(140, startBH - delta));
       clearTimeout(window._rowResizeTimer);
       window._rowResizeTimer = setTimeout(() => {
         ['dcard-expense','dcard-income','dcard-wallet','dcard-cashflow'].forEach(id => renderLaporanDonutCard(id));
-      }, 40);
+      }, 30);
     };
     const onUp = () => {
-      localStorage.setItem('lap-h-top',    Math.round(top.getBoundingClientRect().height)    + '');
-      localStorage.setItem('lap-h-bottom', Math.round(bottom.getBoundingClientRect().height) + '');
+      localStorage.setItem('lap-h-top',    top.offsetHeight    + '');
+      localStorage.setItem('lap-h-bottom', bottom.offsetHeight + '');
       resizer.classList.remove('dragging');
-      document.body.style.userSelect = '';
-      document.body.style.cursor     = '';
+      document.body.removeChild(overlay);
       renderDesktopCharts();
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup',   onUp);
+      overlay.removeEventListener('mousemove', onMove);
+      overlay.removeEventListener('mouseup',   onUp);
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
+    overlay.addEventListener('mousemove', onMove);
+    overlay.addEventListener('mouseup',   onUp);
   });
 }
 
