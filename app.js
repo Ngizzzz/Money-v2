@@ -2109,7 +2109,7 @@ function renderBarInto(canvasId) {
     ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(pL+cW,y); ctx.stroke();
     ctx.setLineDash([]);
     const lbl = val>=1e6?(val/1e6).toFixed(1)+'jt':val>=1e3?Math.round(val/1000)+'rb':'0';
-    ctx.fillStyle='#55535f'; ctx.font=`${Math.max(9,Math.round(H*0.055))}px JetBrains Mono`;
+    ctx.fillStyle='#55535f'; ctx.font=`${fs_axis}px JetBrains Mono`;
     ctx.textAlign='right'; ctx.fillText(lbl, pL-8, y+4);
   }
 
@@ -2144,23 +2144,22 @@ function renderBarInto(canvasId) {
     ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.max(16, H*0.08));
   });
 
-  // Legend di bawah label bulan - dengan jarak cukup
-  const fs  = 12;
-  const sq  = 12;
-  const legY = H - 6;
-  // Hitung lebar tiap item: kotak + gap + teks
-  const w1 = sq + 5 + ctx.measureText('Pemasukan').width;
-  const gap = 24;
-  const w2 = sq + 5 + ctx.measureText('Pengeluaran').width;
-  ctx.font = `${fs}px Syne`;
-  const totalLegW = ctx.measureText('Pemasukan').width + sq + 5 + gap + sq + 5 + ctx.measureText('Pengeluaran').width;
+  // Legend di bawah label bulan
+  const fs_leg = Math.max(11, fs_axis);
+  const sq_leg = Math.max(10, Math.round(fs_leg*0.9));
+  const legY = H - Math.max(8, Math.round(pB*0.12));
+  ctx.font = `${fs_leg}px Syne`;
+  const tw1 = ctx.measureText('Pemasukan').width;
+  const tw2 = ctx.measureText('Pengeluaran').width;
+  const legGap = 28;
+  const totalLegW = sq_leg + 6 + tw1 + legGap + sq_leg + 6 + tw2;
   const lx = (W - totalLegW) / 2;
-  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq, sq, sq);
+  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq_leg, sq_leg, sq_leg);
   ctx.fillStyle='#8a8799'; ctx.textAlign='left';
-  ctx.fillText('Pemasukan', lx+sq+5, legY-1);
-  const x2 = lx + sq + 5 + ctx.measureText('Pemasukan').width + gap;
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(x2, legY-sq, sq, sq);
-  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', x2+sq+5, legY-1);
+  ctx.fillText('Pemasukan', lx+sq_leg+6, legY-1);
+  const x2 = lx + sq_leg + 6 + tw1 + legGap;
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(x2, legY-sq_leg, sq_leg, sq_leg);
+  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', x2+sq_leg+6, legY-1);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
