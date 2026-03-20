@@ -2182,6 +2182,92 @@ function setupResizable() {
   // Laporan donut column resizers
   setupLaporanColResizer('lap-resizer-1', 'dcard-expense', 'dcard-income');
   setupLaporanColResizer('lap-resizer-2', 'dcard-income',  'dcard-wallet');
+  setupLaporanRowResizer('lap-row-resizer',   'laporan-donut-row', 'laporan-bar-row');
+  setupBarBottomResizer('lap-row-resizer-2', 'laporan-bar-row');
+}
+
+function setupBarBottomResizer(resizerId, barRowId) {
+  const resizer = document.getElementById(resizerId);
+  const barRow  = document.getElementById(barRowId);
+  if (!resizer || !barRow) return;
+
+  let startY, startH;
+  resizer.addEventListener('mousedown', e => {
+    startY = e.clientY;
+    startH = barRow.offsetHeight;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'row-resize';
+
+    const onMove = e => {
+      const newH = Math.max(140, startH + (e.clientY - startY));
+      barRow.style.height    = newH + 'px';
+      barRow.style.minHeight = newH + 'px';
+      clearTimeout(window._barBottomTimer);
+      window._barBottomTimer = setTimeout(() => renderLaporanDonutCard('dcard-cashflow'), 30);
+    };
+    const onUp = () => {
+      localStorage.setItem('lap-h-bottom', barRow.offsetHeight + 'px');
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      renderLaporanDonutCard('dcard-cashflow');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+function setupLaporanRowResizer(resizerId, topId, bottomId) {
+  const resizer = document.getElementById(resizerId);
+  const top     = document.getElementById(topId);
+  const bottom  = document.getElementById(bottomId);
+  if (!resizer || !top || !bottom) return;
+
+  // Restore saved heights
+  const savedT = localStorage.getItem('lap-h-top');
+  const savedB = localStorage.getItem('lap-h-bottom');
+  if (savedT) top.style.height    = savedT;
+  if (savedB) bottom.style.height = savedB;
+
+  let startY, startTH, startBH;
+  resizer.addEventListener('mousedown', e => {
+    startY   = e.clientY;
+    startTH  = top.offsetHeight;
+    startBH  = bottom.offsetHeight;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'row-resize';
+
+    const onMove = e => {
+      const delta = e.clientY - startY;
+      const newTH = Math.max(140, startTH + delta);
+      const newBH = Math.max(140, startBH - delta);
+      top.style.height    = newTH + 'px';
+      top.style.minHeight = newTH + 'px';
+      bottom.style.height    = newBH + 'px';
+      bottom.style.minHeight = newBH + 'px';
+      // Re-render charts
+      ['dcard-expense','dcard-income','dcard-wallet','dcard-cashflow'].forEach(id => {
+        clearTimeout(window['_lapTimer_'+id]);
+        window['_lapTimer_'+id] = setTimeout(() => renderLaporanDonutCard(id), 30);
+      });
+    };
+    const onUp = () => {
+      localStorage.setItem('lap-h-top',    top.offsetHeight    + 'px');
+      localStorage.setItem('lap-h-bottom', bottom.offsetHeight + 'px');
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      renderDesktopCharts();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 function setupLaporanColResizer(resizerId, leftId, rightId) {
