@@ -1895,10 +1895,9 @@ function renderLaporanDonutCard(cardId) {
   const card   = document.getElementById(cardId);
   const canvas = document.getElementById(canvasId);
   if (!card || !canvas) return;
-  const rect = card.getBoundingClientRect();
-  const W = Math.round(rect.width  - 28);
-  const H = Math.round(rect.height - 40);
-  if (W < 80 || H < 60) return;
+  // Use clientWidth/clientHeight to stay within card bounds
+  const W = Math.max(80,  card.clientWidth  - 28);
+  const H = Math.max(60,  card.clientHeight - 36);
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   canvas.width  = W;
