@@ -2076,14 +2076,20 @@ function roundRect(ctx, x, y, w, h, radii) {
 
 function renderBarInto(canvasId) {
   const canvas = document.getElementById(canvasId); if (!canvas) return;
-  const parent  = canvas.parentElement;
-  const titleEl = parent?.querySelector('.ldc-title,.chart-sub');
-  const titleH  = titleEl ? titleEl.offsetHeight + 12 : 28;
-  const W = parent ? Math.max(200, parent.clientWidth  - 32) : 400;
-  const H = parent ? Math.max(140, parent.clientHeight - titleH - 16) : 200;
-  canvas.style.width  = W + 'px';
-  canvas.style.height = H + 'px';
-  canvas.width = W; canvas.height = H;
+  // Jika canvas sudah di-set ukurannya (dari popup), pakai itu
+  // Kalau belum, ukur dari parent
+  let W = canvas.width;
+  let H = canvas.height;
+  if (!W || !H) {
+    const parent  = canvas.parentElement;
+    const titleEl = parent?.querySelector('.ldc-title,.chart-sub');
+    const titleH  = titleEl ? titleEl.offsetHeight + 12 : 28;
+    W = parent ? Math.max(200, parent.clientWidth  - 32) : 400;
+    H = parent ? Math.max(140, parent.clientHeight - titleH - 16) : 200;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width = W; canvas.height = H;
+  }
   const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
 
   const filtered = getFilteredTxsForLaporan();
