@@ -525,6 +525,18 @@
       .bottom-nav      { display: none !important; }
       .pwa-banner      { display: none !important; }
     }
+
+    /* Month separator */
+    .tx-month-separator { display:flex; align-items:center; justify-content:space-between; padding:12px 4px 6px; margin-top:6px; border-bottom:1px solid var(--border); margin-bottom:4px; }
+    .tx-month-label { font-size:11px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:0.5px; }
+    .tx-month-total { font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; }
+    .tx-month-total.income  { color:#4ef5b0; }
+    .tx-month-total.expense { color:#f54e6a; }
+
+    /* Wallet percentage */
+    .wallet-cat-pct { font-size:10px; color:var(--t3); font-weight:400; margin-left:4px; }
+    .wallet-item-pct-bar { height:3px; background:var(--border); border-radius:2px; margin-top:5px; width:100%; overflow:hidden; }
+    .wallet-item-pct-fill { height:100%; background:var(--lime); border-radius:2px; transition:width .4s ease; }
   </style>
 </head>
 <body>
