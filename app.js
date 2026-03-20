@@ -738,122 +738,34 @@ function renderActiveChart() {
   if (activeChart === 'cashflow')    renderBar();
 }
 
+// Mobile charts - gunakan fungsi desktop yang sama
 function renderDonut(type) {
-  const isExpense = type === 'expense';
-  const canvasId  = isExpense ? 'c-pie-expense' : 'c-pie-income';
-  const legendId  = isExpense ? 'legend-expense' : 'legend-income';
-  const accentColor = isExpense ? '#f54e6a' : '#4ef5b0';
-  const emptyMsg  = isExpense ? 'Belum ada pengeluaran' : 'Belum ada pemasukan';
-
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const W = canvas.offsetWidth || 320; canvas.width = W;
-  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
-
-  const filtered = getFilteredTxsForLaporan().filter(t => t.type === type);
-  const totals = {};
-  filtered.forEach(t => totals[t.label] = (totals[t.label]||0) + t.amount);
-  const labels = Object.keys(totals), data = Object.values(totals);
-  const total  = data.reduce((a,b)=>a+b,0);
-  const legend = document.getElementById(legendId);
-
-  if (!total) {
-    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
-    ctx.fillText(emptyMsg, W/2, 90); legend.innerHTML=''; return;
-  }
-
-  const cx=90, cy=88, r=70; let angle=-Math.PI/2;
-  data.forEach((v,i) => {
-    const slice=(v/total)*Math.PI*2;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
-    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fill(); angle+=slice;
-  });
-  // Donut hole
-  const bgColor = document.documentElement.classList.contains('light') ? '#f5f4f0' : '#0d0d10';
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgColor; ctx.fill();
-  // Center text
-  ctx.fillStyle=chartColors().textPrimary; ctx.textAlign='center'; ctx.font='500 11px Syne';
-  ctx.fillText(isExpense?'Keluar':'Masuk', cx, cy-5);
-  ctx.font='500 12px JetBrains Mono'; ctx.fillStyle=accentColor;
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy+12);
-  // Side list
-  labels.slice(0,5).forEach((lbl,i) => {
-    const pct = Math.round(data[i]/total*100);
-    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fillRect(W-130,22+i*30,8,8);
-    ctx.fillStyle=chartColors().textSecondary; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
-    ctx.fillStyle=chartColors().textPrimary; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
-  });
-  legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+  const canvasId = type === 'expense' ? 'c-pie-expense' : 'c-pie-income';
+  const legendId = type === 'expense' ? 'legend-expense' : 'legend-income';
+  const canvas = document.getElementById(canvasId); if (!canvas) return;
+  const W = canvas.offsetWidth || 320;
+  const H = Math.round(W * 0.65);
+  canvas.style.height = H + 'px';
+  canvas.width = W; canvas.height = H;
+  renderDonutInto(type, canvasId, legendId);
 }
 
 function renderWalletDonut() {
-  const canvas = document.getElementById('c-pie-wallet');
-  if (!canvas) return;
-  const W = canvas.offsetWidth||320; canvas.width=W;
-  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
-  const legend = document.getElementById('legend-wallet');
-
-  const items = allWalletItems();
-  if (!items.length) {
-    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
-    ctx.fillText('Belum ada dompet',W/2,90); legend.innerHTML=''; return;
-  }
-
-  const labels=[], data=[];
-  items.forEach(item => {
-    const bal = calcWalletBalance(item);
-    if (bal > 0) { labels.push(item.name); data.push(bal); }
-  });
-
-  if (!labels.length) {
-    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
-    ctx.fillText('Semua saldo dompet 0',W/2,90); legend.innerHTML=''; return;
-  }
-
-  const total = data.reduce((a,b)=>a+b,0);
-  const cx=90, cy=88, r=70; let angle=-Math.PI/2;
-  data.forEach((v,i) => {
-    const slice=(v/total)*Math.PI*2;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
-    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fill(); angle+=slice;
-  });
-  const bgColor = document.documentElement.classList.contains('light') ? '#f5f4f0' : '#0d0d10';
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgColor; ctx.fill();
-  ctx.fillStyle=chartColors().textPrimary; ctx.textAlign='center'; ctx.font='500 11px Syne'; ctx.fillText('Total',cx,cy-5);
-  ctx.font='500 12px JetBrains Mono'; ctx.fillStyle='#d4f54e';
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
-  labels.slice(0,5).forEach((lbl,i) => {
-    const pct=Math.round(data[i]/total*100);
-    ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fillRect(W-130,22+i*30,8,8);
-    ctx.fillStyle=chartColors().textSecondary; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
-    ctx.fillStyle=chartColors().textPrimary; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
-  });
-  legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+  const canvas = document.getElementById('c-pie-wallet'); if (!canvas) return;
+  const W = canvas.offsetWidth || 320;
+  const H = Math.round(W * 0.65);
+  canvas.style.height = H + 'px';
+  canvas.width = W; canvas.height = H;
+  renderWalletDonutInto('c-pie-wallet', 'legend-wallet');
 }
 
 function renderBar() {
-  const canvas=document.getElementById('c-bar');
-  if (!canvas) return;
-  const W=canvas.offsetWidth||320; canvas.width=W;
-  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,150);
-  // Bar chart gunakan semua data atau filter sesuai pilihan
-  const filteredForBar = getFilteredTxsForLaporan();
-  const months=[];
-  for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
-  const inc=months.map(m=>filteredForBar.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const exp=months.map(m=>filteredForBar.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
-  const max=Math.max(...inc,...exp,1);
-  const pL=10,pR=10,pB=24,pT=14,cW=W-pL-pR,cH=150-pB-pT,gW=cW/months.length,bW=gW*0.3;
-  months.forEach((m,i)=>{
-    const x=pL+i*gW+gW*0.08,iH=(inc[i]/max)*cH,eH=(exp[i]/max)*cH;
-    ctx.fillStyle='#4ef5b0'; ctx.fillRect(x,pT+cH-iH,bW,iH);
-    ctx.fillStyle='#f54e6a'; ctx.fillRect(x+bW+2,pT+cH-eH,bW,eH);
-    const d=new Date(m+'-01');
-    ctx.fillStyle=chartColors().textMuted; ctx.font='9px Syne'; ctx.textAlign='center';
-    ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}),x+bW,150-6);
-  });
-  ctx.fillStyle='#4ef5b0'; ctx.fillRect(W-110,5,8,8); ctx.fillStyle=chartColors().textSecondary; ctx.font='9px Syne'; ctx.textAlign='left'; ctx.fillText('Pemasukan',W-98,13);
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(W-110,19,8,8); ctx.fillStyle=chartColors().textSecondary; ctx.fillText('Pengeluaran',W-98,27);
+  const canvas = document.getElementById('c-bar'); if (!canvas) return;
+  const W = canvas.offsetWidth || 320;
+  const H = Math.round(W * 0.55);
+  canvas.style.height = H + 'px';
+  canvas.width = W; canvas.height = H;
+  renderBarInto('c-bar');
 }
 
 // ─── Google Sheets Sync ───────────────────────────────────────
@@ -2110,7 +2022,7 @@ function renderBarInto(canvasId) {
   const exp = months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
   const maxVal = Math.max(...inc,...exp,1);
 
-  const fs_axis = Math.max(10, Math.round(W * 0.013));
+  const fs_axis = Math.max(8, Math.round(W * 0.008));
   const pL = Math.max(64, Math.round(W * 0.09));
   const pR = 20;
   const pB = Math.max(72, Math.round(H * 0.22));
