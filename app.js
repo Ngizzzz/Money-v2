@@ -2092,7 +2092,11 @@ function renderBarInto(canvasId) {
   const exp = months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
   const maxVal = Math.max(...inc,...exp,1);
 
-  const pL=64, pR=20, pB=64, pT=24;
+  const fs_axis = Math.max(10, Math.round(W * 0.013));
+  const pL = Math.max(64, Math.round(W * 0.09));
+  const pR = 20;
+  const pB = Math.max(72, Math.round(H * 0.22));
+  const pT = Math.max(24, Math.round(H * 0.06));
   const cW=W-pL-pR, cH=H-pB-pT;
   const gW=cW/months.length;
   const bW = Math.max(8, Math.floor(gW*0.28));
@@ -2139,9 +2143,9 @@ function renderBarInto(canvasId) {
     const shortYear  = String(d.getFullYear()).slice(2);
     const monthLabel = shortMonth + ' ' + shortYear;
     ctx.fillStyle='#8a8799';
-    ctx.font=`bold ${Math.max(9,Math.round(H*0.055))}px Syne`;
+    ctx.font=`bold ${fs_axis}px Syne`;
     ctx.textAlign='center';
-    ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.max(16, H*0.08));
+    ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.round(pB * 0.38));
   });
 
   // Legend di bawah label bulan
