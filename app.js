@@ -1883,10 +1883,34 @@ function updateDesktopLaporanInfo() {
   else el.textContent='Semua waktu';
 }
 
+function renderLaporanDonutCard(cardId) {
+  const map = {
+    'dcard-expense':  ['expense', 'd-c-pie-expense', 'd-legend-expense'],
+    'dcard-income':   ['income',  'd-c-pie-income',  'd-legend-income'],
+    'dcard-wallet':   ['wallet',  'd-c-pie-wallet',  'd-legend-wallet'],
+    'dcard-cashflow': ['cashflow','d-c-bar',          null],
+  };
+  const entry = map[cardId]; if (!entry) return;
+  const [type, canvasId, legendId] = entry;
+  const card   = document.getElementById(cardId);
+  const canvas = document.getElementById(canvasId);
+  if (!card || !canvas) return;
+  const rect = card.getBoundingClientRect();
+  const W = Math.round(rect.width  - 28);
+  const H = Math.round(rect.height - 40);
+  if (W < 80 || H < 60) return;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width  = W;
+  canvas.height = H;
+  if      (type === 'cashflow') renderBarInto(canvasId);
+  else if (type === 'wallet')   renderWalletDonutInto(canvasId, legendId);
+  else                          renderDonutInto(type, canvasId, legendId);
+}
+
 function renderDesktopCharts() {
   if(!isDesktop()) return;
   updateDesktopLaporanInfo();
-  // Wait for DOM layout then render
   requestAnimationFrame(() => {
     setTimeout(() => {
       renderLaporanDonutCard('dcard-expense');
