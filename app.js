@@ -758,7 +758,7 @@ function renderDonut(type) {
   const legend = document.getElementById(legendId);
 
   if (!total) {
-    ctx.fillStyle='#4a4858'; ctx.font='13px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
     ctx.fillText(emptyMsg, W/2, 90); legend.innerHTML=''; return;
   }
 
@@ -772,7 +772,7 @@ function renderDonut(type) {
   const bgColor = document.documentElement.classList.contains('light') ? '#f5f4f0' : '#0d0d10';
   ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgColor; ctx.fill();
   // Center text
-  ctx.fillStyle='#eeeae2'; ctx.textAlign='center'; ctx.font='500 11px Syne';
+  ctx.fillStyle=chartColors().textPrimary; ctx.textAlign='center'; ctx.font='500 11px Syne';
   ctx.fillText(isExpense?'Keluar':'Masuk', cx, cy-5);
   ctx.font='500 12px JetBrains Mono'; ctx.fillStyle=accentColor;
   ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy+12);
@@ -780,8 +780,8 @@ function renderDonut(type) {
   labels.slice(0,5).forEach((lbl,i) => {
     const pct = Math.round(data[i]/total*100);
     ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fillRect(W-130,22+i*30,8,8);
-    ctx.fillStyle='#8a8799'; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
-    ctx.fillStyle='#eeeae2'; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
+    ctx.fillStyle=chartColors().textSecondary; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
+    ctx.fillStyle=chartColors().textPrimary; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
   });
   legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
 }
@@ -795,7 +795,7 @@ function renderWalletDonut() {
 
   const items = allWalletItems();
   if (!items.length) {
-    ctx.fillStyle='#4a4858'; ctx.font='13px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
     ctx.fillText('Belum ada dompet',W/2,90); legend.innerHTML=''; return;
   }
 
@@ -806,7 +806,7 @@ function renderWalletDonut() {
   });
 
   if (!labels.length) {
-    ctx.fillStyle='#4a4858'; ctx.font='13px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=chartColors().textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
     ctx.fillText('Semua saldo dompet 0',W/2,90); legend.innerHTML=''; return;
   }
 
@@ -819,14 +819,14 @@ function renderWalletDonut() {
   });
   const bgColor = document.documentElement.classList.contains('light') ? '#f5f4f0' : '#0d0d10';
   ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgColor; ctx.fill();
-  ctx.fillStyle='#eeeae2'; ctx.textAlign='center'; ctx.font='500 11px Syne'; ctx.fillText('Total',cx,cy-5);
+  ctx.fillStyle=chartColors().textPrimary; ctx.textAlign='center'; ctx.font='500 11px Syne'; ctx.fillText('Total',cx,cy-5);
   ctx.font='500 12px JetBrains Mono'; ctx.fillStyle='#d4f54e';
   ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
   labels.slice(0,5).forEach((lbl,i) => {
     const pct=Math.round(data[i]/total*100);
     ctx.fillStyle=COLORS[i%COLORS.length]; ctx.fillRect(W-130,22+i*30,8,8);
-    ctx.fillStyle='#8a8799'; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
-    ctx.fillStyle='#eeeae2'; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
+    ctx.fillStyle=chartColors().textSecondary; ctx.font='10px Syne'; ctx.textAlign='left'; ctx.fillText(lbl,W-118,30+i*30);
+    ctx.fillStyle=chartColors().textPrimary; ctx.font='500 10px JetBrains Mono'; ctx.fillText(pct+'%',W-118,42+i*30);
   });
   legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
 }
@@ -849,11 +849,11 @@ function renderBar() {
     ctx.fillStyle='#4ef5b0'; ctx.fillRect(x,pT+cH-iH,bW,iH);
     ctx.fillStyle='#f54e6a'; ctx.fillRect(x+bW+2,pT+cH-eH,bW,eH);
     const d=new Date(m+'-01');
-    ctx.fillStyle='#4a4858'; ctx.font='9px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=chartColors().textMuted; ctx.font='9px Syne'; ctx.textAlign='center';
     ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}),x+bW,150-6);
   });
-  ctx.fillStyle='#4ef5b0'; ctx.fillRect(W-110,5,8,8); ctx.fillStyle='#8a8799'; ctx.font='9px Syne'; ctx.textAlign='left'; ctx.fillText('Pemasukan',W-98,13);
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(W-110,19,8,8); ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran',W-98,27);
+  ctx.fillStyle='#4ef5b0'; ctx.fillRect(W-110,5,8,8); ctx.fillStyle=chartColors().textSecondary; ctx.font='9px Syne'; ctx.textAlign='left'; ctx.fillText('Pemasukan',W-98,13);
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(W-110,19,8,8); ctx.fillStyle=chartColors().textSecondary; ctx.fillText('Pengeluaran',W-98,27);
 }
 
 // ─── Google Sheets Sync ───────────────────────────────────────
@@ -2058,7 +2058,7 @@ function renderWalletDonutInto(canvasId, legendId) {
   const bgC = document.documentElement.classList.contains('light')?'#ffffff':'#14141a';
   ctx.beginPath(); ctx.arc(cx,cy,innerR-2,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
   ctx.textAlign='center';
-  ctx.fillStyle='#8a8799'; ctx.font=`${Math.max(10,Math.round(r*0.14))}px Syne`;
+  ctx.fillStyle=chartColors().textSecondary; ctx.font=`${Math.max(10,Math.round(r*0.14))}px Syne`;
   ctx.fillText('Total', cx, cy-r*0.06);
   ctx.fillStyle='#d4f54e'; ctx.font=`600 ${Math.max(11,Math.round(r*0.16))}px JetBrains Mono`;
   ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy+r*0.14);
@@ -2071,9 +2071,9 @@ function renderWalletDonutInto(canvasId, legendId) {
     const y   = startY + i*lineH;
     ctx.fillStyle = COLORS[i%COLORS.length];
     ctx.fillRect(lx0, y-6, 12, 12);
-    ctx.fillStyle='#eeeae2'; ctx.font=`500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
+    ctx.fillStyle=CC.textPrimary; ctx.font=`500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
     ctx.textAlign='left'; ctx.fillText(lbl, lx0+18, y+4);
-    ctx.fillStyle='#8a8799'; ctx.font=`${Math.max(10,Math.round(r*0.12))}px Syne`;
+    ctx.fillStyle=CC.textSecondary; ctx.font=`${Math.max(10,Math.round(r*0.12))}px Syne`;
     ctx.fillText(pct+'%', lx0+18, y+4+Math.max(12,Math.round(r*0.14)));
   });
   if(legend) legend.style.display='none';
