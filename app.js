@@ -1428,18 +1428,21 @@ function renderHomePie() {
   const innerR = r * 0.54;
   let angle = -Math.PI/2;
 
-  // Draw slices
+  // Draw slices with gap
+  const gap = 0.025;
   data.forEach((v,i) => {
-    const slice = (v/total) * Math.PI * 2;
-    ctx.beginPath(); ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    const slice = (v/total)*Math.PI*2 - gap;
+    ctx.beginPath();
+    ctx.arc(cx,cy,r, angle+gap/2, angle+slice+gap/2);
+    ctx.arc(cx,cy,innerR, angle+slice+gap/2, angle+gap/2, true);
+    ctx.closePath();
     ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
-    angle += slice;
+    angle += (v/total)*Math.PI*2;
   });
 
   // Donut hole
   const bgC = document.documentElement.classList.contains('light') ? '#ffffff' : '#14141a';
-  ctx.beginPath(); ctx.arc(cx,cy,innerR,0,Math.PI*2);
+  ctx.beginPath(); ctx.arc(cx,cy,innerR-2,0,Math.PI*2);
   ctx.fillStyle = bgC; ctx.fill();
 
   // Center text
@@ -1895,9 +1898,9 @@ function renderDonutInto(type, canvasId, legendId) {
   const H = canvas.height || canvas.offsetHeight || 300;
   const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
 
-  const isExp   = type === 'expense';
-  const accent  = isExp ? '#f54e6a' : '#4ef5b0';
-  const label   = isExp ? 'Keluar' : 'Masuk';
+  const isExp  = type === 'expense';
+  const accent = isExp ? '#f54e6a' : '#4ef5b0';
+  const centerLabel = isExp ? 'Keluar' : 'Masuk';
   const filtered = getFilteredTxsForLaporan().filter(t=>t.type===type);
   const totals = {}; filtered.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
   const labels = Object.keys(totals), data = Object.values(totals);
@@ -1910,61 +1913,62 @@ function renderDonutInto(type, canvasId, legendId) {
     if (legend) legend.innerHTML=''; return;
   }
 
-  // Donut centered, radius based on smaller dimension
-  const cx = W/2, cy = H/2;
-  const r  = Math.min(W, H) * 0.36;
-  let angle = -Math.PI/2;
+  // Layout: donut on left, legend on right
+  const legW  = Math.min(160, W * 0.35);
+  const chartW = W - legW - 16;
+  const cx = chartW / 2;
+  const cy = H / 2;
+  const r  = Math.min(chartW, H) * 0.38;
+  const innerR = r * 0.58;
 
+  // Draw slices with gap
+  let angle = -Math.PI / 2;
+  const gap = 0.025;
   data.forEach((v,i) => {
-    const slice = (v/total)*Math.PI*2;
-    ctx.beginPath(); ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
-    ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
-    angle += slice;
+    const slice = (v/total) * Math.PI * 2 - gap;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, angle + gap/2, angle + slice + gap/2);
+    ctx.arc(cx, cy, innerR, angle + slice + gap/2, angle + gap/2, true);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i%COLORS.length];
+    ctx.fill();
+    angle += (v/total) * Math.PI * 2;
   });
-
-  // Hole
-  const bgC = document.documentElement.classList.contains('light') ? '#ffffff' : '#14141a';
-  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
 
   // Center text
-  ctx.textAlign='center';
-  ctx.fillStyle='#8a8799'; ctx.font=`${Math.round(r*0.16)}px Syne`;
-  ctx.fillText(label, cx, cy - r*0.08);
-  ctx.fillStyle=accent; ctx.font=`600 ${Math.round(r*0.18)}px JetBrains Mono`;
+  const bgC = document.documentElement.classList.contains('light') ? '#ffffff' : '#14141a';
+  ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI*2);
+  ctx.fillStyle = bgC; ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8a8799';
+  ctx.font = `${Math.max(10, Math.round(r*0.14))}px Syne`;
+  ctx.fillText(centerLabel, cx, cy - r*0.06);
+  ctx.fillStyle = accent;
+  ctx.font = `600 ${Math.max(11, Math.round(r*0.16))}px JetBrains Mono`;
   ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy + r*0.14);
 
-  // External labels with leader lines
-  angle = -Math.PI/2;
-  data.forEach((v,i) => {
-    const slice = (v/total)*Math.PI*2;
-    const pct   = Math.round(v/total*100);
-    const mid   = angle + slice/2;
-    const lx    = cx + Math.cos(mid)*(r*1.35);
-    const ly    = cy + Math.sin(mid)*(r*1.35);
-    const ls    = cx + Math.cos(mid)*(r+4);
-    const le    = cx + Math.cos(mid)*(r+20);
-    const lsy   = cy + Math.sin(mid)*(r+4);
-    const ley   = cy + Math.sin(mid)*(r+20);
-    const dir   = lx > cx ? 1 : -1;
-
-    ctx.beginPath(); ctx.moveTo(ls,lsy); ctx.lineTo(le,ley);
-    ctx.strokeStyle=COLORS[i%COLORS.length]; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(le,ley); ctx.lineTo(le+dir*18,ley);
-    ctx.stroke();
-
-    const tx2 = le + dir*22;
-    ctx.textAlign = dir>0 ? 'left' : 'right';
+  // Legend on right side
+  const lx0 = chartW + 16;
+  const lineH = Math.max(28, H / (labels.length + 1));
+  const startY = (H - labels.length * lineH) / 2 + lineH * 0.5;
+  labels.forEach((lbl, i) => {
+    const pct = Math.round(data[i]/total*100);
+    const y   = startY + i * lineH;
+    // Color square
     ctx.fillStyle = COLORS[i%COLORS.length];
-    ctx.font = `700 ${Math.round(r*0.16)}px Syne`;
-    ctx.fillText(pct+'%', tx2, ley-2);
+    ctx.fillRect(lx0, y - 6, 12, 12);
+    // Label
+    ctx.fillStyle = '#eeeae2';
+    ctx.font = `500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
+    ctx.textAlign = 'left';
+    ctx.fillText(lbl, lx0 + 18, y + 4);
+    // Percentage
     ctx.fillStyle = '#8a8799';
-    ctx.font = `${Math.round(r*0.14)}px Syne`;
-    ctx.fillText(labels[i], tx2, ley+Math.round(r*0.16));
-    angle += slice;
+    ctx.font = `${Math.max(10,Math.round(r*0.12))}px Syne`;
+    ctx.fillText(pct + '%', lx0 + 18, y + 4 + Math.max(12, Math.round(r*0.14)));
   });
 
-  if (legend) legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+  if (legend) legend.style.display = 'none';
 }
 
 function renderWalletDonutInto(canvasId, legendId) {
@@ -1982,40 +1986,58 @@ function renderWalletDonutInto(canvasId, legendId) {
     ctx.fillText('Belum ada dompet', W/2, H/2);
     if(legend) legend.innerHTML=''; return;
   }
-  const cx=W/2, cy=H/2, r=Math.min(W,H)*0.36;
-  let angle=-Math.PI/2;
-  data.forEach((v,i)=>{
-    const slice=(v/total)*Math.PI*2;
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();
-    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();angle+=slice;
+
+  const legW   = Math.min(160, W*0.35);
+  const chartW = W - legW - 16;
+  const cx = chartW/2, cy = H/2;
+  const r  = Math.min(chartW, H) * 0.38;
+  const innerR = r * 0.58;
+  const gap = 0.025;
+
+  let angle = -Math.PI/2;
+  data.forEach((v,i) => {
+    const slice = (v/total)*Math.PI*2 - gap;
+    ctx.beginPath();
+    ctx.arc(cx,cy,r, angle+gap/2, angle+slice+gap/2);
+    ctx.arc(cx,cy,innerR, angle+slice+gap/2, angle+gap/2, true);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
+    angle += (v/total)*Math.PI*2;
   });
-  const bgC=document.documentElement.classList.contains('light')?'#ffffff':'#14141a';
-  ctx.beginPath();ctx.arc(cx,cy,r*0.52,0,Math.PI*2);ctx.fillStyle=bgC;ctx.fill();
+
+  const bgC = document.documentElement.classList.contains('light')?'#ffffff':'#14141a';
+  ctx.beginPath(); ctx.arc(cx,cy,innerR-2,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
   ctx.textAlign='center';
-  ctx.fillStyle='#8a8799';ctx.font=`${Math.round(r*0.16)}px Syne`;ctx.fillText('Total',cx,cy-r*0.08);
-  ctx.fillStyle='#d4f54e';ctx.font=`600 ${Math.round(r*0.18)}px JetBrains Mono`;
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+r*0.14);
-  angle=-Math.PI/2;
-  data.forEach((v,i)=>{
-    const slice=(v/total)*Math.PI*2;
-    const pct=Math.round(v/total*100);
-    const mid=angle+slice/2;
-    const lx=cx+Math.cos(mid)*(r*1.35), ly=cy+Math.sin(mid)*(r*1.35);
-    const ls=cx+Math.cos(mid)*(r+4), le=cx+Math.cos(mid)*(r+20);
-    const lsy=cy+Math.sin(mid)*(r+4), ley=cy+Math.sin(mid)*(r+20);
-    const dir=lx>cx?1:-1;
-    ctx.beginPath();ctx.moveTo(ls,lsy);ctx.lineTo(le,ley);
-    ctx.strokeStyle=COLORS[i%COLORS.length];ctx.lineWidth=1.5;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(le,ley);ctx.lineTo(le+dir*18,ley);ctx.stroke();
-    const tx2=le+dir*22;
-    ctx.textAlign=dir>0?'left':'right';
-    ctx.fillStyle=COLORS[i%COLORS.length];ctx.font=`700 ${Math.round(r*0.16)}px Syne`;
-    ctx.fillText(pct+'%',tx2,ley-2);
-    ctx.fillStyle='#8a8799';ctx.font=`${Math.round(r*0.14)}px Syne`;
-    ctx.fillText(labels[i],tx2,ley+Math.round(r*0.16));
-    angle+=slice;
+  ctx.fillStyle='#8a8799'; ctx.font=`${Math.max(10,Math.round(r*0.14))}px Syne`;
+  ctx.fillText('Total', cx, cy-r*0.06);
+  ctx.fillStyle='#d4f54e'; ctx.font=`600 ${Math.max(11,Math.round(r*0.16))}px JetBrains Mono`;
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy+r*0.14);
+
+  const lx0  = chartW + 16;
+  const lineH = Math.max(28, H/(labels.length+1));
+  const startY = (H - labels.length*lineH)/2 + lineH*0.5;
+  labels.forEach((lbl,i) => {
+    const pct = Math.round(data[i]/total*100);
+    const y   = startY + i*lineH;
+    ctx.fillStyle = COLORS[i%COLORS.length];
+    ctx.fillRect(lx0, y-6, 12, 12);
+    ctx.fillStyle='#eeeae2'; ctx.font=`500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
+    ctx.textAlign='left'; ctx.fillText(lbl, lx0+18, y+4);
+    ctx.fillStyle='#8a8799'; ctx.font=`${Math.max(10,Math.round(r*0.12))}px Syne`;
+    ctx.fillText(pct+'%', lx0+18, y+4+Math.max(12,Math.round(r*0.14)));
   });
-  if(legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+  if(legend) legend.style.display='none';
+}
+
+function roundRect(ctx, x, y, w, h, radii) {
+  const [tl, tr, br, bl] = Array.isArray(radii) ? radii : [radii,radii,radii,radii];
+  ctx.beginPath();
+  ctx.moveTo(x+tl, y);
+  ctx.lineTo(x+w-tr, y); ctx.quadraticCurveTo(x+w, y, x+w, y+tr);
+  ctx.lineTo(x+w, y+h-br); ctx.quadraticCurveTo(x+w, y+h, x+w-br, y+h);
+  ctx.lineTo(x+bl, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-bl);
+  ctx.lineTo(x, y+tl); ctx.quadraticCurveTo(x, y, x+tl, y);
+  ctx.closePath();
 }
 
 function renderBarInto(canvasId) {
