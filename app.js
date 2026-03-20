@@ -337,14 +337,8 @@ function renderTxList(container, list) {
       const monthExpense = list.filter(t=>t.date.startsWith(month)&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
       const monthTotal   = monthIncome - monthExpense;
       html += `<div class="tx-month-separator">
-        <div>
-          <span class="tx-month-label">${fmtMon(month)}</span>
-        </div>
-        <div style="display:flex;gap:12px;align-items:center">
-          <span style="font-size:10px;color:var(--mint)">+${fmt(monthIncome)}</span>
-          <span style="font-size:10px;color:var(--rose)">-${fmt(monthExpense)}</span>
-          <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
-        </div>
+        <span class="tx-month-label">${fmtMon(month)}</span>
+        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
       </div>`;
       lastMonth = month;
     }
@@ -1622,12 +1616,8 @@ function renderTxListInto(container, list) {
       const mExp  = list.filter(t=>t.date.startsWith(month)&&t.type==='expense').reduce((s,t)=>s+t.amount,0);
       const monthTotal = mInc - mExp;
       html += `<div class="tx-month-separator">
-        <div><span class="tx-month-label">${fmtMon(month)}</span></div>
-        <div style="display:flex;gap:12px;align-items:center">
-          <span style="font-size:10px;color:var(--mint)">+${fmt(mInc)}</span>
-          <span style="font-size:10px;color:var(--rose)">-${fmt(mExp)}</span>
-          <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
-        </div>
+        <span class="tx-month-label">${fmtMon(month)}</span>
+        <span class="tx-month-total ${monthTotal>=0?'income':'expense'}">${monthTotal>=0?'+':'-'}${fmt(monthTotal)}</span>
       </div>`;
       lastMonth = month;
     }
@@ -1791,26 +1781,29 @@ function setupDesktopLaporan() {
 
 function openChartDetailModal(chartType) {
   const titles = {
-    expense: '📉 Pengeluaran per Kategori',
-    income:  '📈 Pemasukan per Kategori',
-    wallet:  '🏦 Distribusi Dompet',
-    cashflow:'💹 Arus Kas 6 Bulan Terakhir'
+    expense:  '📉 Pengeluaran per Kategori',
+    income:   '📈 Pemasukan per Kategori',
+    wallet:   '🏦 Distribusi Dompet',
+    cashflow: '💹 Arus Kas 6 Bulan Terakhir'
   };
   document.getElementById('chart-detail-title').textContent = titles[chartType] || chartType;
   openModal('modal-chart-detail');
 
-  // Wait for modal to render then draw chart
   setTimeout(() => {
     const canvas = document.getElementById('d-c-detail');
-    const legend = document.getElementById('d-legend-detail');
     if (!canvas) return;
-    const modal  = canvas.closest('.modal');
-    const W = modal ? modal.offsetWidth - 48 : 520;
-    const H = chartType === 'cashflow' ? 220 : 320;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
+    const modal = document.getElementById('chart-detail-modal');
+    const W = modal ? modal.clientWidth - 48 : 700;
+    // Height: for donut use square-ish, for bar use shorter
+    const H = chartType === 'cashflow' ? Math.round(W * 0.35) : Math.round(W * 0.55);
     canvas.width  = W;
     canvas.height = H;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+
+    // Clear legend
+    const legend = document.getElementById('d-legend-detail');
+    if (legend) legend.innerHTML = '';
 
     if (chartType === 'cashflow') {
       renderBarInto('d-c-detail');
@@ -1819,7 +1812,7 @@ function openChartDetailModal(chartType) {
     } else {
       renderDonutInto(chartType, 'd-c-detail', 'd-legend-detail');
     }
-  }, 100);
+  }, 150);
 }
 
 function updateDesktopLaporanInfo() {
