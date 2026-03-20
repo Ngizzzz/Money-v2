@@ -2093,7 +2093,7 @@ function renderBarInto(canvasId) {
   const exp = months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
   const maxVal = Math.max(...inc,...exp,1);
 
-  const pL=56, pR=20, pB=40, pT=24;
+  const pL=56, pR=20, pB=56, pT=24;
   const cW=W-pL-pR, cH=H-pB-pT;
   const gW=cW/months.length;
   const bW = Math.max(8, Math.floor(gW*0.28));
@@ -2136,23 +2136,26 @@ function renderBarInto(canvasId) {
       ctx.fill();
     }
     const d = new Date(m+'-01');
+    const shortMonth = d.toLocaleDateString('id-ID',{month:'short'}).toUpperCase();
+    const shortYear  = String(d.getFullYear()).slice(2);
+    const monthLabel = shortMonth + ' ' + shortYear;
     ctx.fillStyle='#8a8799';
-    ctx.font=`bold ${Math.max(9,Math.round(H*0.06))}px Syne`;
+    ctx.font=`bold ${Math.max(9,Math.round(H*0.055))}px Syne`;
     ctx.textAlign='center';
-    ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}).toUpperCase(), groupX+groupW/2, baseY+Math.max(16,H*0.08));
+    ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.max(16, H*0.08));
   });
 
-  // Legend bawah sumbu X - tengah
-  const fs = Math.max(9, Math.round(H*0.06));
-  const sq = Math.max(7, Math.round(H*0.05));
-  const legY = H - Math.round(H*0.04);
-  const legTotalW = sq + 6 + 70 + 16 + sq + 6 + 80;
+  // Legend di bawah label bulan
+  const fs  = Math.max(9, Math.round(H*0.055));
+  const sq  = Math.max(7, Math.round(H*0.05));
+  const legY = H - 4;
+  const legTotalW = sq + 5 + 64 + 14 + sq + 5 + 76;
   const lx = (W - legTotalW) / 2;
-  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq+2, sq, sq);
+  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq, sq, sq);
   ctx.fillStyle='#8a8799'; ctx.font=`${fs}px Syne`; ctx.textAlign='left';
-  ctx.fillText('Pemasukan', lx+sq+5, legY+2);
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx+sq+6+70, legY-sq+2, sq, sq);
-  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+6+70+sq+5, legY+2);
+  ctx.fillText('Pemasukan', lx+sq+5, legY-1);
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx+sq+5+64+5, legY-sq, sq, sq);
+  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+5+64+5+sq+5, legY-1);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
