@@ -2142,15 +2142,17 @@ function renderBarInto(canvasId) {
     ctx.fillText(d.toLocaleDateString('id-ID',{month:'short'}).toUpperCase(), groupX+groupW/2, baseY+Math.max(16,H*0.08));
   });
 
-  // Legend top right
-  const fs = Math.max(10, Math.round(H*0.065));
-  const sq = Math.max(8, Math.round(H*0.055));
-  const lx = W-130, ly = pT;
-  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx,ly,sq,sq);
+  // Legend bawah sumbu X - tengah
+  const fs = Math.max(9, Math.round(H*0.06));
+  const sq = Math.max(7, Math.round(H*0.05));
+  const legY = H - Math.round(H*0.04);
+  const legTotalW = sq + 6 + 70 + 16 + sq + 6 + 80;
+  const lx = (W - legTotalW) / 2;
+  ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq+2, sq, sq);
   ctx.fillStyle='#8a8799'; ctx.font=`${fs}px Syne`; ctx.textAlign='left';
-  ctx.fillText('Pemasukan', lx+sq+5, ly+sq-1);
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx,ly+sq+6,sq,sq);
-  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+5, ly+sq*2+5);
+  ctx.fillText('Pemasukan', lx+sq+5, legY+2);
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx+sq+6+70, legY-sq+2, sq, sq);
+  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+6+70+sq+5, legY+2);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
