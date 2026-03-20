@@ -1886,10 +1886,13 @@ function updateDesktopLaporanInfo() {
 function renderDesktopCharts() {
   if(!isDesktop()) return;
   updateDesktopLaporanInfo();
-  renderDonutInto('expense','d-c-pie-expense','d-legend-expense');
-  renderDonutInto('income', 'd-c-pie-income', 'd-legend-income');
-  renderWalletDonutInto('d-c-pie-wallet','d-legend-wallet');
-  renderBarInto('d-c-bar');
+  // Use renderLaporanDonutCard so canvas size matches card size
+  setTimeout(() => {
+    renderLaporanDonutCard('dcard-expense');
+    renderLaporanDonutCard('dcard-income');
+    renderLaporanDonutCard('dcard-wallet');
+    renderBarInto('d-c-bar');
+  }, 50);
 }
 
 function renderDonutInto(type, canvasId, legendId) {
@@ -1913,12 +1916,12 @@ function renderDonutInto(type, canvasId, legendId) {
     if (legend) legend.innerHTML=''; return;
   }
 
-  // Layout: donut on left, legend on right
-  const legW  = Math.min(160, W * 0.35);
+  // Layout: donut centered, legend on right
+  const legW   = Math.min(170, W * 0.36);
   const chartW = W - legW - 16;
-  const cx = chartW / 2;
-  const cy = H / 2;
-  const r  = Math.min(chartW, H) * 0.38;
+  const cx     = chartW / 2;
+  const cy     = H / 2;
+  const r      = Math.min(chartW * 0.46, H * 0.44);
   const innerR = r * 0.58;
 
   // Draw slices with gap
@@ -1987,10 +1990,10 @@ function renderWalletDonutInto(canvasId, legendId) {
     if(legend) legend.innerHTML=''; return;
   }
 
-  const legW   = Math.min(160, W*0.35);
+  const legW   = Math.min(170, W*0.36);
   const chartW = W - legW - 16;
   const cx = chartW/2, cy = H/2;
-  const r  = Math.min(chartW, H) * 0.38;
+  const r  = Math.min(chartW*0.46, H*0.44);
   const innerR = r * 0.58;
   const gap = 0.025;
 
@@ -2150,6 +2153,49 @@ function setupResizable() {
   // ── Column resizers ──────────────────────────────────────────
   setupColResizer('col-resizer-1', 'bcol-1', 'bcol-2');
   setupColResizer('col-resizer-2', 'bcol-2', 'bcol-3');
+  // Laporan donut column resizers
+  setupLaporanColResizer('lap-resizer-1', 'dcard-expense', 'dcard-income');
+  setupLaporanColResizer('lap-resizer-2', 'dcard-income',  'dcard-wallet');
+}
+
+function setupLaporanColResizer(resizerId, leftId, rightId) {
+  const resizer = document.getElementById(resizerId);
+  const left    = document.getElementById(leftId);
+  const right   = document.getElementById(rightId);
+  if (!resizer || !left || !right) return;
+
+  // Restore saved
+  const sl = localStorage.getItem('lap-w-'+leftId);
+  const sr = localStorage.getItem('lap-w-'+rightId);
+  if (sl) left.style.flex  = '0 0 '+sl;
+  if (sr) right.style.flex = '0 0 '+sr;
+
+  let startX, startLW, startRW;
+  resizer.addEventListener('mousedown', e => {
+    startX=e.clientX; startLW=left.offsetWidth; startRW=right.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.userSelect='none'; document.body.style.cursor='col-resize';
+    const onMove = e => {
+      const d=e.clientX-startX;
+      const nL=Math.max(160,startLW+d), nR=Math.max(160,startRW-d);
+      left.style.flex  = '0 0 '+nL+'px';
+      if (rightId !== 'dcard-wallet') right.style.flex = '0 0 '+nR+'px';
+      // Re-render charts
+      clearTimeout(window._lapResizeTimer);
+      window._lapResizeTimer = setTimeout(() => renderDesktopCharts(), 50);
+    };
+    const onUp = () => {
+      localStorage.setItem('lap-w-'+leftId,  left.offsetWidth+'px');
+      localStorage.setItem('lap-w-'+rightId, right.offsetWidth+'px');
+      resizer.classList.remove('dragging');
+      document.body.style.userSelect=''; document.body.style.cursor='';
+      renderDesktopCharts();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 function setupColResizer(resizerId, leftColId, rightColId) {
