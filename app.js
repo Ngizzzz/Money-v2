@@ -2146,8 +2146,8 @@ function renderBarInto(canvasId) {
   });
 
   // Legend di bawah label bulan - dengan jarak cukup
-  const fs  = 10;
-  const sq  = 10;
+  const fs  = 12;
+  const sq  = 12;
   const legY = H - 6;
   // Hitung lebar tiap item: kotak + gap + teks
   const w1 = sq + 5 + ctx.measureText('Pemasukan').width;
