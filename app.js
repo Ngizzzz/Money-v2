@@ -2191,8 +2191,19 @@ function setupBarBottomResizer(resizerId, barRowId) {
   const barRow  = document.getElementById(barRowId);
   if (!resizer || !barRow) return;
 
+  const setH = (el, h) => {
+    el.style.height    = h + 'px';
+    el.style.minHeight = h + 'px';
+    el.style.maxHeight = h + 'px';
+    el.style.flexShrink = '0';
+  };
+
+  const savedB = localStorage.getItem('lap-h-bottom');
+  if (savedB) setH(barRow, parseInt(savedB));
+
   let startY, startH;
   resizer.addEventListener('mousedown', e => {
+    e.preventDefault();
     startY = e.clientY;
     startH = barRow.offsetHeight;
     resizer.classList.add('dragging');
@@ -2201,13 +2212,12 @@ function setupBarBottomResizer(resizerId, barRowId) {
 
     const onMove = e => {
       const newH = Math.max(140, startH + (e.clientY - startY));
-      barRow.style.height    = newH + 'px';
-      barRow.style.minHeight = newH + 'px';
+      setH(barRow, newH);
       clearTimeout(window._barBottomTimer);
       window._barBottomTimer = setTimeout(() => renderLaporanDonutCard('dcard-cashflow'), 30);
     };
     const onUp = () => {
-      localStorage.setItem('lap-h-bottom', barRow.offsetHeight + 'px');
+      localStorage.setItem('lap-h-bottom', barRow.offsetHeight + '');
       resizer.classList.remove('dragging');
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
@@ -2226,14 +2236,22 @@ function setupLaporanRowResizer(resizerId, topId, bottomId) {
   const bottom  = document.getElementById(bottomId);
   if (!resizer || !top || !bottom) return;
 
-  // Restore saved heights
+  // Fix heights so they can be resized
+  const setH = (el, h) => {
+    el.style.height    = h + 'px';
+    el.style.minHeight = h + 'px';
+    el.style.maxHeight = h + 'px';
+    el.style.flexShrink = '0';
+  };
+
   const savedT = localStorage.getItem('lap-h-top');
   const savedB = localStorage.getItem('lap-h-bottom');
-  if (savedT) top.style.height    = savedT;
-  if (savedB) bottom.style.height = savedB;
+  if (savedT) setH(top,    parseInt(savedT));
+  if (savedB) setH(bottom, parseInt(savedB));
 
   let startY, startTH, startBH;
   resizer.addEventListener('mousedown', e => {
+    e.preventDefault();
     startY   = e.clientY;
     startTH  = top.offsetHeight;
     startBH  = bottom.offsetHeight;
@@ -2245,19 +2263,16 @@ function setupLaporanRowResizer(resizerId, topId, bottomId) {
       const delta = e.clientY - startY;
       const newTH = Math.max(140, startTH + delta);
       const newBH = Math.max(140, startBH - delta);
-      top.style.height    = newTH + 'px';
-      top.style.minHeight = newTH + 'px';
-      bottom.style.height    = newBH + 'px';
-      bottom.style.minHeight = newBH + 'px';
-      // Re-render charts
+      setH(top,    newTH);
+      setH(bottom, newBH);
       ['dcard-expense','dcard-income','dcard-wallet','dcard-cashflow'].forEach(id => {
         clearTimeout(window['_lapTimer_'+id]);
         window['_lapTimer_'+id] = setTimeout(() => renderLaporanDonutCard(id), 30);
       });
     };
     const onUp = () => {
-      localStorage.setItem('lap-h-top',    top.offsetHeight    + 'px');
-      localStorage.setItem('lap-h-bottom', bottom.offsetHeight + 'px');
+      localStorage.setItem('lap-h-top',    top.offsetHeight    + '');
+      localStorage.setItem('lap-h-bottom', bottom.offsetHeight + '');
       resizer.classList.remove('dragging');
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
