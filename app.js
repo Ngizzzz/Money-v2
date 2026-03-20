@@ -2093,7 +2093,7 @@ function renderBarInto(canvasId) {
   const exp = months.map(m=>filtered.filter(t=>t.type==='expense'&&t.date.startsWith(m)).reduce((s,t)=>s+t.amount,0));
   const maxVal = Math.max(...inc,...exp,1);
 
-  const pL=56, pR=20, pB=56, pT=24;
+  const pL=64, pR=20, pB=64, pT=24;
   const cW=W-pL-pR, cH=H-pB-pT;
   const gW=cW/months.length;
   const bW = Math.max(8, Math.floor(gW*0.28));
@@ -2145,17 +2145,23 @@ function renderBarInto(canvasId) {
     ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.max(16, H*0.08));
   });
 
-  // Legend di bawah label bulan
-  const fs  = Math.max(9, Math.round(H*0.055));
-  const sq  = Math.max(7, Math.round(H*0.05));
-  const legY = H - 4;
-  const legTotalW = sq + 5 + 64 + 14 + sq + 5 + 76;
-  const lx = (W - legTotalW) / 2;
+  // Legend di bawah label bulan - dengan jarak cukup
+  const fs  = 10;
+  const sq  = 10;
+  const legY = H - 6;
+  // Hitung lebar tiap item: kotak + gap + teks
+  const w1 = sq + 5 + ctx.measureText('Pemasukan').width;
+  const gap = 24;
+  const w2 = sq + 5 + ctx.measureText('Pengeluaran').width;
+  ctx.font = `${fs}px Syne`;
+  const totalLegW = ctx.measureText('Pemasukan').width + sq + 5 + gap + sq + 5 + ctx.measureText('Pengeluaran').width;
+  const lx = (W - totalLegW) / 2;
   ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq, sq, sq);
-  ctx.fillStyle='#8a8799'; ctx.font=`${fs}px Syne`; ctx.textAlign='left';
+  ctx.fillStyle='#8a8799'; ctx.textAlign='left';
   ctx.fillText('Pemasukan', lx+sq+5, legY-1);
-  ctx.fillStyle='#f54e6a'; ctx.fillRect(lx+sq+5+64+5, legY-sq, sq, sq);
-  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', lx+sq+5+64+5+sq+5, legY-1);
+  const x2 = lx + sq + 5 + ctx.measureText('Pemasukan').width + gap;
+  ctx.fillStyle='#f54e6a'; ctx.fillRect(x2, legY-sq, sq, sq);
+  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', x2+sq+5, legY-1);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
