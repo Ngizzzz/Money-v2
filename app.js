@@ -1886,13 +1886,15 @@ function updateDesktopLaporanInfo() {
 function renderDesktopCharts() {
   if(!isDesktop()) return;
   updateDesktopLaporanInfo();
-  // Use renderLaporanDonutCard so canvas size matches card size
-  setTimeout(() => {
-    renderLaporanDonutCard('dcard-expense');
-    renderLaporanDonutCard('dcard-income');
-    renderLaporanDonutCard('dcard-wallet');
-    renderBarInto('d-c-bar');
-  }, 50);
+  // Wait for DOM layout then render
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      renderLaporanDonutCard('dcard-expense');
+      renderLaporanDonutCard('dcard-income');
+      renderLaporanDonutCard('dcard-wallet');
+      renderLaporanDonutCard('dcard-cashflow');
+    }, 80);
+  });
 }
 
 function renderDonutInto(type, canvasId, legendId) {
