@@ -1453,8 +1453,9 @@ function renderHomePie() {
   ctx.fillStyle = bgC; ctx.fill();
 
   // Center text
+  const _CCh = chartColors();
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#8a8799'; ctx.font = '11px Syne';
+  ctx.fillStyle = _CCh.textSecondary; ctx.font = '11px Syne';
   ctx.fillText('Total', cx, cy - 8);
   ctx.fillStyle = '#f54e6a';
   ctx.font = '600 14px JetBrains Mono';
@@ -1493,7 +1494,7 @@ function renderHomePie() {
     ctx.fillText(pct+'%', tx2, lineEndY - 2);
 
     // Label below pct
-    ctx.fillStyle = '#8a8799';
+    ctx.fillStyle = _CCh.textSecondary;
     ctx.font = '11px Syne';
     ctx.fillText(labels[i], tx2, lineEndY + 12);
 
@@ -1895,8 +1896,8 @@ function chartColors() {
   const isLight = document.documentElement.classList.contains('light');
   return {
     textPrimary:   isLight ? '#1a1a2e' : '#eeeae2',
-    textSecondary: isLight ? '#3a3a4a' : '#8a8799',
-    textMuted:     isLight ? '#555566' : '#55535f',
+    textSecondary: isLight ? '#2a2a3a' : '#8a8799',
+    textMuted:     isLight ? '#444455' : '#55535f',
     bg:            isLight ? '#f5f4f0' : '#14141a',
     gridLine:      isLight ? 'rgba(0,0,0,0.08)' : 'rgba(138,135,153,0.2)',
     baseline:      isLight ? 'rgba(0,0,0,0.2)'  : 'rgba(138,135,153,0.35)',
@@ -1989,7 +1990,7 @@ function renderDonutInto(type, canvasId, legendId) {
   ctx.beginPath(); ctx.arc(cx, cy, innerR - 2, 0, Math.PI*2);
   ctx.fillStyle = bgC; ctx.fill();
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#8a8799';
+  ctx.fillStyle = CC.textSecondary;
   ctx.font = `${Math.max(10, Math.round(r*0.14))}px Syne`;
   ctx.fillText(centerLabel, cx, cy - r*0.06);
   ctx.fillStyle = accent;
@@ -2007,12 +2008,12 @@ function renderDonutInto(type, canvasId, legendId) {
     ctx.fillStyle = COLORS[i%COLORS.length];
     ctx.fillRect(lx0, y - 6, 12, 12);
     // Label
-    ctx.fillStyle = '#eeeae2';
+    ctx.fillStyle = CC.textPrimary;
     ctx.font = `500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
     ctx.textAlign = 'left';
     ctx.fillText(lbl, lx0 + 18, y + 4);
     // Percentage
-    ctx.fillStyle = '#8a8799';
+    ctx.fillStyle = CC.textSecondary;
     ctx.font = `${Math.max(10,Math.round(r*0.12))}px Syne`;
     ctx.fillText(pct + '%', lx0 + 18, y + 4 + Math.max(12, Math.round(r*0.14)));
   });
@@ -2071,9 +2072,9 @@ function renderWalletDonutInto(canvasId, legendId) {
     const y   = startY + i*lineH;
     ctx.fillStyle = COLORS[i%COLORS.length];
     ctx.fillRect(lx0, y-6, 12, 12);
-    ctx.fillStyle=CC.textPrimary; ctx.font=`500 ${Math.max(10,Math.round(r*0.13))}px Syne`;
+    ctx.fillStyle=CC.textPrimary; ctx.font=`600 ${Math.max(11,Math.round(r*0.13))}px Syne`;
     ctx.textAlign='left'; ctx.fillText(lbl, lx0+18, y+4);
-    ctx.fillStyle=CC.textSecondary; ctx.font=`${Math.max(10,Math.round(r*0.12))}px Syne`;
+    ctx.fillStyle=CC.textSecondary; ctx.font=`${Math.max(11,Math.round(r*0.12))}px Syne`;
     ctx.fillText(pct+'%', lx0+18, y+4+Math.max(12,Math.round(r*0.14)));
   });
   if(legend) legend.style.display='none';
