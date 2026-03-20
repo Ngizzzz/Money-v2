@@ -1423,8 +1423,9 @@ function renderHomePie() {
   const labels = Object.keys(totals), data = Object.values(totals);
   const total = data.reduce((a,b)=>a+b,0);
 
+  const CC = chartColors();
   if (!total) {
-    ctx.fillStyle='#4a4858'; ctx.font='13px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=CC.textMuted; ctx.font='13px Syne'; ctx.textAlign='center';
     ctx.fillText('Belum ada pengeluaran', W/2, H/2);
     if (legend) legend.innerHTML=''; return;
   }
@@ -1889,6 +1890,19 @@ function updateDesktopLaporanInfo() {
   else el.textContent='Semua waktu';
 }
 
+// Theme-aware colors for canvas charts
+function chartColors() {
+  const isLight = document.documentElement.classList.contains('light');
+  return {
+    textPrimary:   isLight ? '#1a1a2e' : '#eeeae2',
+    textSecondary: isLight ? '#3a3a4a' : '#8a8799',
+    textMuted:     isLight ? '#555566' : '#55535f',
+    bg:            isLight ? '#f5f4f0' : '#14141a',
+    gridLine:      isLight ? 'rgba(0,0,0,0.08)' : 'rgba(138,135,153,0.2)',
+    baseline:      isLight ? 'rgba(0,0,0,0.2)'  : 'rgba(138,135,153,0.35)',
+  };
+}
+
 function renderLaporanDonutCard(cardId) {
   const map = {
     'dcard-expense':  ['expense', 'd-c-pie-expense', 'd-legend-expense'],
@@ -1941,8 +1955,9 @@ function renderDonutInto(type, canvasId, legendId) {
   const total  = data.reduce((a,b)=>a+b,0);
   const legend = document.getElementById(legendId);
 
+  const CC = chartColors();
   if (!total) {
-    ctx.fillStyle='#4a4858'; ctx.font='14px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=CC.textMuted; ctx.font='14px Syne'; ctx.textAlign='center';
     ctx.fillText('Belum ada data', W/2, H/2);
     if (legend) legend.innerHTML=''; return;
   }
@@ -2015,8 +2030,9 @@ function renderWalletDonutInto(canvasId, legendId) {
   const labels=[], data=[];
   items.forEach(item=>{ const bal=calcWalletBalance(item); if(bal>0){labels.push(item.name);data.push(bal);} });
   const total = data.reduce((a,b)=>a+b,0);
+  const CC = chartColors();
   if (!total) {
-    ctx.fillStyle='#4a4858'; ctx.font='14px Syne'; ctx.textAlign='center';
+    ctx.fillStyle=CC.textMuted; ctx.font='14px Syne'; ctx.textAlign='center';
     ctx.fillText('Belum ada dompet', W/2, H/2);
     if(legend) legend.innerHTML=''; return;
   }
@@ -2084,6 +2100,7 @@ function renderBarInto(canvasId) {
   const W = canvas.width  || (parent ? Math.max(200, parent.clientWidth  - 32) : 400);
   const H = canvas.height || (parent ? Math.max(140, parent.clientHeight - titleH - 16) : 200);
   const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+  const CC = chartColors();
 
   const filtered = getFilteredTxsForLaporan();
   const months = [];
@@ -2109,17 +2126,17 @@ function renderBarInto(canvasId) {
     const y   = pT + cH*(1 - t/yTicks);
     const val = (t/yTicks)*maxVal;
     ctx.setLineDash([4,5]); ctx.lineWidth=0.8;
-    ctx.strokeStyle='rgba(138,135,153,0.2)';
+    ctx.strokeStyle=CC.gridLine;
     ctx.beginPath(); ctx.moveTo(pL,y); ctx.lineTo(pL+cW,y); ctx.stroke();
     ctx.setLineDash([]);
     const lbl = val>=1e6?(val/1e6).toFixed(1)+'jt':val>=1e3?Math.round(val/1000)+'rb':'0';
-    ctx.fillStyle='#55535f'; ctx.font=`${fs_axis}px JetBrains Mono`;
+    ctx.fillStyle=CC.textMuted; ctx.font=`${fs_axis}px JetBrains Mono`;
     ctx.textAlign='right'; ctx.fillText(lbl, pL-8, y+4);
   }
 
   // Baseline
   ctx.setLineDash([]); ctx.lineWidth=1;
-  ctx.strokeStyle='rgba(138,135,153,0.35)';
+  ctx.strokeStyle=CC.baseline;
   ctx.beginPath(); ctx.moveTo(pL,pT+cH); ctx.lineTo(pL+cW,pT+cH); ctx.stroke();
 
   // Bars
@@ -2142,7 +2159,7 @@ function renderBarInto(canvasId) {
     const shortMonth = d.toLocaleDateString('id-ID',{month:'short'}).toUpperCase();
     const shortYear  = String(d.getFullYear()).slice(2);
     const monthLabel = shortMonth + ' ' + shortYear;
-    ctx.fillStyle='#8a8799';
+    ctx.fillStyle=CC.textSecondary;
     ctx.font=`bold ${fs_axis}px Syne`;
     ctx.textAlign='center';
     ctx.fillText(monthLabel, groupX+groupW/2, baseY + Math.round(pB * 0.38));
@@ -2159,11 +2176,11 @@ function renderBarInto(canvasId) {
   const totalLegW = sq_leg + 6 + tw1 + legGap + sq_leg + 6 + tw2;
   const lx = (W - totalLegW) / 2;
   ctx.fillStyle='#4ef5b0'; ctx.fillRect(lx, legY-sq_leg, sq_leg, sq_leg);
-  ctx.fillStyle='#8a8799'; ctx.textAlign='left';
+  ctx.fillStyle=CC.textSecondary; ctx.textAlign='left';
   ctx.fillText('Pemasukan', lx+sq_leg+6, legY-1);
   const x2 = lx + sq_leg + 6 + tw1 + legGap;
   ctx.fillStyle='#f54e6a'; ctx.fillRect(x2, legY-sq_leg, sq_leg, sq_leg);
-  ctx.fillStyle='#8a8799'; ctx.fillText('Pengeluaran', x2+sq_leg+6, legY-1);
+  ctx.fillStyle=CC.textSecondary; ctx.fillText('Pengeluaran', x2+sq_leg+6, legY-1);
 }
 
 // ─── Sync desktop buttons with mobile theme ───────────────────
