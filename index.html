@@ -356,7 +356,7 @@
       /* ── Desktop pages ── */
       .desktop-page { display: none; }
       .desktop-page.active { display: block; }
-      #dpage-laporan.active { display: flex; flex-direction: column; }
+      #dpage-laporan.active { display: flex !important; flex-direction: column; }
 
       /* Beranda summary row */
       .d-summary-row {
@@ -448,36 +448,51 @@
       /* Laporan desktop: donut row + bar */
       .laporan-donut-row {
         display: flex;
-        gap: 0;
-        margin-bottom: 14px;
         align-items: stretch;
-        height: 260px;
+        height: 240px;
+        overflow: hidden;
+        flex-shrink: 0;
       }
-      .laporan-donut-card {
-        flex: 1 1 0;
-        min-width: 160px;
+      .laporan-bar-row {
+        display: flex;
+        height: 200px;
+        overflow: hidden;
+        flex-shrink: 0;
       }
+      /* Row resizer (vertical) */
+      .row-resizer {
+        height: 8px;
+        background: var(--s2);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        cursor: row-resize;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s;
+      }
+      .row-resizer:hover, .row-resizer.dragging { background: var(--lime-d); border-color: var(--lime); }
+      .row-resizer::after {
+        content: '';
+        width: 40px; height: 2px;
+        background: var(--border2);
+        border-radius: 2px;
+      }
+      .row-resizer:hover::after, .row-resizer.dragging::after { background: var(--lime); }
+
+      /* Bar chart card */
       #dcard-cashflow {
-        grid-column: 1 / -1;
-        min-height: 220px;
-        max-height: 600px;
+        flex: 1 1 0;
+        min-width: 200px;
         display: flex;
         flex-direction: column;
-        padding-bottom: 4px;
-        position: relative;
+        overflow: hidden;
       }
       #dcard-cashflow .ldc-title { flex-shrink: 0; }
       #dcard-cashflow canvas { width: 100% !important; flex: 1; min-height: 0; display: block; }
-      .bar-resize-handle {
-        position: absolute; bottom: 0; left: 0; right: 0; height: 8px;
-        cursor: ns-resize; display: flex; align-items: center; justify-content: center;
-      }
-      .bar-resize-handle::after {
-        content: ''; width: 40px; height: 3px;
-        background: var(--border2); border-radius: 2px;
-        transition: background .15s;
-      }
-      .bar-resize-handle:hover::after { background: var(--lime); }
       .laporan-donut-card {
         background: var(--s1); border: 1px solid var(--border);
         border-radius: var(--r); padding: 14px;
@@ -489,12 +504,7 @@
       .laporan-donut-card canvas { flex: 1; min-height: 0; width: 100%; }
       .laporan-donut-card:hover { border-color: var(--border2); background: var(--s2); }
       .laporan-donut-card.active { border-color: var(--lime); background: var(--lime-d); }
-      .laporan-donut-card.active::after {
-        content: '▼';
-        position: absolute; bottom: -10px; left: 50%;
-        transform: translateX(-50%);
-        color: var(--lime); font-size: 12px;
-      }
+
       .ldc-title { font-size: 11px; font-weight: 700; color: var(--t2); margin-bottom: 8px; }
       .laporan-donut-card.active .ldc-title { color: var(--lime); }
 
