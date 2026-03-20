@@ -1368,8 +1368,14 @@ function switchDPage(page) {
   if (el) el.classList.add('active');
   document.getElementById('d-page-title').textContent = dPageTitles[page] || page;
   if (page === 'riwayat') renderDesktopHistory();
-  if (page === 'laporan') renderDesktopCharts();
   if (page === 'dompet')  renderDesktopWallet();
+  if (page === 'laporan') {
+    // Setup row resizers after page is visible
+    requestAnimationFrame(() => {
+      setupLaporanRowResizersOnce();
+      renderDesktopCharts();
+    });
+  }
 }
 
 // ─── Desktop Balance ──────────────────────────────────────────
@@ -2181,102 +2187,63 @@ function setupResizable() {
   // Laporan donut column resizers
   setupLaporanColResizer('lap-resizer-1', 'dcard-expense', 'dcard-income');
   setupLaporanColResizer('lap-resizer-2', 'dcard-income',  'dcard-wallet');
-  setupLaporanRowResizer('lap-row-resizer',   'laporan-donut-row', 'laporan-bar-row');
+}
+
+let _lapRowResizersSetup = false;
+function setupLaporanRowResizersOnce() {
+  if (_lapRowResizersSetup) return;
+  _lapRowResizersSetup = true;
+  setupLaporanRowResizer('lap-row-resizer',  'laporan-donut-row', 'laporan-bar-row');
   setupBarBottomResizer('lap-row-resizer-2', 'laporan-bar-row');
 }
 
-function setupBarBottomResizer(resizerId, barRowId) {
+
+
+
+// ── Vertical row resizer ──────────────────────────────────────
+function makeRowResizable(resizerId, topEl, bottomEl, lsKeyTop, lsKeyBot) {
   const resizer = document.getElementById(resizerId);
-  const barRow  = document.getElementById(barRowId);
-  if (!resizer || !barRow) return;
-
-  const setH = (el, h) => {
-    el.style.height    = h + 'px';
-    el.style.minHeight = h + 'px';
-    el.style.maxHeight = h + 'px';
-    el.style.flex      = '0 0 ' + h + 'px';
-  };
-
+  if (!resizer || !topEl) return;
+  if (lsKeyTop && localStorage.getItem(lsKeyTop)) topEl.style.height = localStorage.getItem(lsKeyTop) + 'px';
+  if (lsKeyBot && bottomEl && localStorage.getItem(lsKeyBot)) bottomEl.style.height = localStorage.getItem(lsKeyBot) + 'px';
   resizer.addEventListener('mousedown', e => {
     e.preventDefault();
-    const startY = e.clientY;
-    const startH = barRow.offsetHeight;
+    const startY = e.clientY, startTH = topEl.offsetHeight, startBH = bottomEl ? bottomEl.offsetHeight : 0;
     resizer.classList.add('dragging');
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:row-resize';
-    document.body.appendChild(overlay);
-
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:row-resize';
+    document.body.appendChild(ov);
     const onMove = e => {
-      const newH = Math.max(140, startH + (e.clientY - startY));
-      setH(barRow, newH);
-      clearTimeout(window._barBottomTimer);
-      window._barBottomTimer = setTimeout(() => renderLaporanDonutCard('dcard-cashflow'), 30);
-    };
-    const onUp = () => {
-      localStorage.setItem('lap-h-bottom', barRow.offsetHeight + '');
-      resizer.classList.remove('dragging');
-      document.body.removeChild(overlay);
-      renderLaporanDonutCard('dcard-cashflow');
-      overlay.removeEventListener('mousemove', onMove);
-      overlay.removeEventListener('mouseup',   onUp);
-    };
-    overlay.addEventListener('mousemove', onMove);
-    overlay.addEventListener('mouseup',   onUp);
-  });
-}
-
-function setupLaporanRowResizer(resizerId, topId, bottomId) {
-  const resizer = document.getElementById(resizerId);
-  const top     = document.getElementById(topId);
-  const bottom  = document.getElementById(bottomId);
-  if (!resizer || !top || !bottom) return;
-
-  const setH = (el, h) => {
-    el.style.height    = h + 'px';
-    el.style.minHeight = h + 'px';
-    el.style.maxHeight = h + 'px';
-    el.style.flex      = '0 0 ' + h + 'px';
-  };
-
-  const defaultH = 240;
-  const savedT   = parseInt(localStorage.getItem('lap-h-top'))   || defaultH;
-  const savedB   = parseInt(localStorage.getItem('lap-h-bottom')) || defaultH;
-  setH(top, savedT); setH(bottom, savedB);
-
-  resizer.addEventListener('mousedown', e => {
-    e.preventDefault();
-    const startY  = e.clientY;
-    const startTH = top.offsetHeight;
-    const startBH = bottom.offsetHeight;
-    resizer.classList.add('dragging');
-
-    // Overlay to capture all mouse events during drag
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:row-resize';
-    document.body.appendChild(overlay);
-
-    const onMove = e => {
-      const delta = e.clientY - startY;
-      setH(top,    Math.max(140, startTH + delta));
-      setH(bottom, Math.max(140, startBH - delta));
-      clearTimeout(window._rowResizeTimer);
-      window._rowResizeTimer = setTimeout(() => {
+      const d = e.clientY - startY;
+      topEl.style.height = Math.max(120, startTH + d) + 'px';
+      if (bottomEl) bottomEl.style.height = Math.max(120, startBH - d) + 'px';
+      clearTimeout(window._lapRowTimer);
+      window._lapRowTimer = setTimeout(() => {
         ['dcard-expense','dcard-income','dcard-wallet','dcard-cashflow'].forEach(id => renderLaporanDonutCard(id));
       }, 30);
     };
     const onUp = () => {
-      localStorage.setItem('lap-h-top',    top.offsetHeight    + '');
-      localStorage.setItem('lap-h-bottom', bottom.offsetHeight + '');
       resizer.classList.remove('dragging');
-      document.body.removeChild(overlay);
+      if (lsKeyTop) localStorage.setItem(lsKeyTop, topEl.offsetHeight);
+      if (lsKeyBot && bottomEl) localStorage.setItem(lsKeyBot, bottomEl.offsetHeight);
+      document.body.removeChild(ov);
+      ov.removeEventListener('mousemove', onMove);
+      ov.removeEventListener('mouseup', onUp);
       renderDesktopCharts();
-      overlay.removeEventListener('mousemove', onMove);
-      overlay.removeEventListener('mouseup',   onUp);
     };
-    overlay.addEventListener('mousemove', onMove);
-    overlay.addEventListener('mouseup',   onUp);
+    ov.addEventListener('mousemove', onMove);
+    ov.addEventListener('mouseup', onUp);
   });
+}
+
+function setupBarBottomResizer(resizerId, barRowId) {
+  const barRow = document.getElementById(barRowId);
+  if (barRow) makeRowResizable(resizerId, barRow, null, 'lap-h-bottom', null);
+}
+
+function setupLaporanRowResizer(resizerId, topId, bottomId) {
+  const top = document.getElementById(topId), bottom = document.getElementById(bottomId);
+  if (top && bottom) makeRowResizable(resizerId, top, bottom, 'lap-h-top', 'lap-h-bottom');
 }
 
 function setupLaporanColResizer(resizerId, leftId, rightId) {
