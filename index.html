@@ -1065,13 +1065,14 @@
             <div class="legend" id="d-legend-wallet"></div>
           </div>
         </div>
-        <!-- Row 2: Bar chart as 4th card -->
-        <div class="laporan-donut-row" style="margin-top:0">
-          <div class="laporan-donut-card" data-dchart="cashflow" id="dcard-cashflow" style="grid-column:1/-1"><div class="bar-resize-handle" id="bar-resize-handle"></div>
+        <div class="row-resizer" id="lap-row-resizer"></div>
+        <div class="laporan-bar-row" id="laporan-bar-row">
+          <div class="laporan-donut-card" data-dchart="cashflow" id="dcard-cashflow">
             <div class="ldc-title">💹 Arus Kas 6 Bulan Terakhir</div>
-            <canvas id="d-c-bar" height="120"></canvas>
+            <canvas id="d-c-bar"></canvas>
           </div>
         </div>
+        <div class="row-resizer" id="lap-row-resizer-2"></div>
 
         <!-- Chart popup modal -->
         <div class="modal-overlay" id="modal-chart-detail" style="align-items:center">
