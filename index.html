@@ -446,30 +446,46 @@
 
       /* Laporan desktop: donut row + bar */
       .laporan-donut-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 14px;
+        display: flex;
+        gap: 0;
         margin-bottom: 14px;
+        align-items: stretch;
+        height: 260px;
+      }
+      .laporan-donut-card {
+        flex: 1 1 0;
+        min-width: 160px;
       }
       #dcard-cashflow {
         grid-column: 1 / -1;
-        resize: vertical;
-        overflow: hidden;
-        min-height: 200px;
+        min-height: 220px;
         max-height: 600px;
         display: flex;
         flex-direction: column;
-        padding-bottom: 8px;
+        padding-bottom: 4px;
+        position: relative;
       }
       #dcard-cashflow .ldc-title { flex-shrink: 0; }
       #dcard-cashflow canvas { width: 100% !important; flex: 1; min-height: 0; display: block; }
+      .bar-resize-handle {
+        position: absolute; bottom: 0; left: 0; right: 0; height: 8px;
+        cursor: ns-resize; display: flex; align-items: center; justify-content: center;
+      }
+      .bar-resize-handle::after {
+        content: ''; width: 40px; height: 3px;
+        background: var(--border2); border-radius: 2px;
+        transition: background .15s;
+      }
+      .bar-resize-handle:hover::after { background: var(--lime); }
       .laporan-donut-card {
         background: var(--s1); border: 1px solid var(--border);
         border-radius: var(--r); padding: 14px;
-        cursor: pointer; transition: all .2s;
+        cursor: pointer; transition: border-color .2s, background .2s;
         position: relative;
         overflow: hidden;
+        display: flex; flex-direction: column;
       }
+      .laporan-donut-card canvas { flex: 1; min-height: 0; width: 100%; }
       .laporan-donut-card:hover { border-color: var(--border2); background: var(--s2); }
       .laporan-donut-card.active { border-color: var(--lime); background: var(--lime-d); }
       .laporan-donut-card.active::after {
@@ -1029,27 +1045,29 @@
           </div>
           <div class="laporan-filter-info" id="d-laporan-filter-info"></div>
         </div>
-        <!-- Row 1: 3 donut charts (clickable to expand) -->
-        <div class="laporan-donut-row">
-          <div class="laporan-donut-card active" data-dchart="expense" id="dcard-expense">
+        <!-- Row 1: 3 donut charts (resizable columns + clickable) -->
+        <div class="laporan-donut-row" id="laporan-donut-row">
+          <div class="laporan-donut-card" data-dchart="expense" id="dcard-expense">
             <div class="ldc-title">📉 Pengeluaran</div>
-            <canvas id="d-c-pie-expense" height="160"></canvas>
+            <canvas id="d-c-pie-expense"></canvas>
             <div class="legend" id="d-legend-expense"></div>
           </div>
+          <div class="col-resizer" id="lap-resizer-1"></div>
           <div class="laporan-donut-card" data-dchart="income" id="dcard-income">
             <div class="ldc-title">📈 Pemasukan</div>
-            <canvas id="d-c-pie-income" height="160"></canvas>
+            <canvas id="d-c-pie-income"></canvas>
             <div class="legend" id="d-legend-income"></div>
           </div>
+          <div class="col-resizer" id="lap-resizer-2"></div>
           <div class="laporan-donut-card" data-dchart="wallet" id="dcard-wallet">
             <div class="ldc-title">🏦 Dompet</div>
-            <canvas id="d-c-pie-wallet" height="160"></canvas>
+            <canvas id="d-c-pie-wallet"></canvas>
             <div class="legend" id="d-legend-wallet"></div>
           </div>
         </div>
         <!-- Row 2: Bar chart as 4th card -->
         <div class="laporan-donut-row" style="margin-top:0">
-          <div class="laporan-donut-card" data-dchart="cashflow" id="dcard-cashflow" style="grid-column:1/-1">
+          <div class="laporan-donut-card" data-dchart="cashflow" id="dcard-cashflow" style="grid-column:1/-1"><div class="bar-resize-handle" id="bar-resize-handle"></div>
             <div class="ldc-title">💹 Arus Kas 6 Bulan Terakhir</div>
             <canvas id="d-c-bar" height="120"></canvas>
           </div>
