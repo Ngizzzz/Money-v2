@@ -414,23 +414,28 @@ function renderWalletPage() {
         </div>
       </div>
       <div class="wallet-items" id="wcat-items-${cat.id}">
-        ${cat.items.map(item => {
-          const bal = calcWalletBalance(item);
-          const counted = item.counted !== false;
-          return `<div class="wallet-item">
-            <div class="wallet-item-left">
-              <div class="wallet-item-name">${item.name}</div>
-              <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
-            </div>
-            <div class="wallet-item-right">
-              <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
-              <span class="counted-badge ${counted?'yes':'no'}">${counted?'Dihitung':'Tidak'}</span>
-              <button class="wallet-item-btn" data-adjust="${item.id}" title="Sesuaikan saldo">⚖️</button>
-              <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}" title="Edit">✏️</button>
-              <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}" title="Hapus">🗑️</button>
-            </div>
-          </div>`;
-        }).join('')}
+        ${(()=>{
+          const catPos = cat.items.reduce((s,i)=>s+Math.max(0,calcWalletBalance(i)),0);
+          return cat.items.map(item => {
+            const bal = calcWalletBalance(item);
+            const counted = item.counted !== false;
+            const pct = catPos>0 ? Math.round(Math.max(0,bal)/catPos*100) : 0;
+            return `<div class="wallet-item">
+              <div class="wallet-item-left">
+                <div class="wallet-item-name">${item.name} <span class="wallet-cat-pct">(${pct}%)</span></div>
+                <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
+                <div class="wallet-item-pct-bar"><div class="wallet-item-pct-fill" style="width:${pct}%"></div></div>
+              </div>
+              <div class="wallet-item-right">
+                <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
+                <span class="counted-badge ${counted?'yes':'no'}">${counted?'✓':'✗'}</span>
+                <button class="wallet-item-btn" data-adjust="${item.id}" title="Sesuaikan saldo">⚖️</button>
+                <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}" title="Edit">✏️</button>
+                <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}" title="Hapus">🗑️</button>
+              </div>
+            </div>`;
+          }).join('');
+        })()}
         <button class="wallet-add-item-btn" data-add-item="${cat.id}">＋ Tambah ${cat.name}</button>
       </div>
     </div>`;
@@ -1693,23 +1698,28 @@ function renderDesktopWallet() {
         </div>
       </div>
       <div class="wallet-items" id="dwcat-items-${cat.id}">
-        ${cat.items.map(item=>{
-          const bal=calcWalletBalance(item);
-          const counted=item.counted!==false;
-          return `<div class="wallet-item">
-            <div class="wallet-item-left">
-              <div class="wallet-item-name">${item.name}</div>
-              <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
-            </div>
-            <div class="wallet-item-right">
-              <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
-              <span class="counted-badge ${counted?'yes':'no'}">${counted?'✓ Dihitung':'✗ Tidak'}</span>
-              <button class="wallet-item-btn" data-adjust="${item.id}">⚖️</button>
-              <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}">✏️</button>
-              <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}">🗑️</button>
-            </div>
-          </div>`;
-        }).join('')}
+        ${(()=>{
+          const catPos=cat.items.reduce((s,i)=>s+Math.max(0,calcWalletBalance(i)),0);
+          return cat.items.map(item=>{
+            const bal=calcWalletBalance(item);
+            const counted=item.counted!==false;
+            const pct=catPos>0?Math.round(Math.max(0,bal)/catPos*100):0;
+            return `<div class="wallet-item">
+              <div class="wallet-item-left">
+                <div class="wallet-item-name">${item.name} <span class="wallet-cat-pct">(${pct}%)</span></div>
+                <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
+                <div class="wallet-item-pct-bar"><div class="wallet-item-pct-fill" style="width:${pct}%"></div></div>
+              </div>
+              <div class="wallet-item-right">
+                <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
+                <span class="counted-badge ${counted?'yes':'no'}">${counted?'✓':'✗'}</span>
+                <button class="wallet-item-btn" data-adjust="${item.id}">⚖️</button>
+                <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}">✏️</button>
+                <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}">🗑️</button>
+              </div>
+            </div>`;
+          }).join('');
+        })()}
         <button class="wallet-add-item-btn" data-add-item="${cat.id}">＋ Tambah ${cat.name}</button>
       </div>
     </div>`;
@@ -1791,18 +1801,26 @@ function openChartDetailModal(chartType) {
 
   setTimeout(() => {
     const canvas = document.getElementById('d-c-detail');
+    const legend = document.getElementById('d-legend-detail');
     if (!canvas) return;
+
     const modal = document.getElementById('chart-detail-modal');
-    const W = modal ? modal.clientWidth - 48 : 700;
-    // Height: for donut use square-ish, for bar use shorter
-    const H = chartType === 'cashflow' ? Math.round(W * 0.35) : Math.round(W * 0.55);
+    if (!modal) return;
+
+    // Calculate available space inside modal
+    const modalW = modal.clientWidth;
+    const modalH = modal.clientHeight;
+    const hdrH   = modal.querySelector('.modal-hdr')?.offsetHeight || 50;
+    const legH   = chartType === 'cashflow' ? 0 : 60;
+    const padding = 48;
+
+    const W = modalW - padding;
+    const H = Math.max(300, modalH - hdrH - legH - padding - 32);
+
     canvas.width  = W;
     canvas.height = H;
     canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
-
-    // Clear legend
-    const legend = document.getElementById('d-legend-detail');
     if (legend) legend.innerHTML = '';
 
     if (chartType === 'cashflow') {
@@ -1812,7 +1830,7 @@ function openChartDetailModal(chartType) {
     } else {
       renderDonutInto(chartType, 'd-c-detail', 'd-legend-detail');
     }
-  }, 150);
+  }, 200);
 }
 
 function updateDesktopLaporanInfo() {
@@ -1835,61 +1853,146 @@ function renderDesktopCharts() {
 }
 
 function renderDonutInto(type, canvasId, legendId) {
-  const canvas=document.getElementById(canvasId); if(!canvas) return;
-  const W=canvas.offsetWidth||400; canvas.width=W;
-  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
-  const isExp=type==='expense';
-  const filtered=getFilteredTxsForLaporan().filter(t=>t.type===type);
-  const totals={}; filtered.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
-  const labels=Object.keys(totals),data=Object.values(totals);
-  const total=data.reduce((a,b)=>a+b,0);
-  const legend=document.getElementById(legendId);
-  if(!total){ctx.fillStyle='#4a4858';ctx.font='13px Syne';ctx.textAlign='center';ctx.fillText('Belum ada data',W/2,90);if(legend)legend.innerHTML='';return;}
-  const cx=90,cy=88,r=70; let angle=-Math.PI/2;
+  const canvas = document.getElementById(canvasId); if (!canvas) return;
+  const W = canvas.width  || canvas.offsetWidth  || 400;
+  const H = canvas.height || canvas.offsetHeight || 300;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+
+  const isExp   = type === 'expense';
+  const accent  = isExp ? '#f54e6a' : '#4ef5b0';
+  const label   = isExp ? 'Keluar' : 'Masuk';
+  const filtered = getFilteredTxsForLaporan().filter(t=>t.type===type);
+  const totals = {}; filtered.forEach(t=>totals[t.label]=(totals[t.label]||0)+t.amount);
+  const labels = Object.keys(totals), data = Object.values(totals);
+  const total  = data.reduce((a,b)=>a+b,0);
+  const legend = document.getElementById(legendId);
+
+  if (!total) {
+    ctx.fillStyle='#4a4858'; ctx.font='14px Syne'; ctx.textAlign='center';
+    ctx.fillText('Belum ada data', W/2, H/2);
+    if (legend) legend.innerHTML=''; return;
+  }
+
+  // Donut centered, radius based on smaller dimension
+  const cx = W/2, cy = H/2;
+  const r  = Math.min(W, H) * 0.36;
+  let angle = -Math.PI/2;
+
+  data.forEach((v,i) => {
+    const slice = (v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
+    angle += slice;
+  });
+
+  // Hole
+  const bgC = document.documentElement.classList.contains('light') ? '#ffffff' : '#14141a';
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.52,0,Math.PI*2); ctx.fillStyle=bgC; ctx.fill();
+
+  // Center text
+  ctx.textAlign='center';
+  ctx.fillStyle='#8a8799'; ctx.font=`${Math.round(r*0.16)}px Syne`;
+  ctx.fillText(label, cx, cy - r*0.08);
+  ctx.fillStyle=accent; ctx.font=`600 ${Math.round(r*0.18)}px JetBrains Mono`;
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total), cx, cy + r*0.14);
+
+  // External labels with leader lines
+  angle = -Math.PI/2;
+  data.forEach((v,i) => {
+    const slice = (v/total)*Math.PI*2;
+    const pct   = Math.round(v/total*100);
+    const mid   = angle + slice/2;
+    const lx    = cx + Math.cos(mid)*(r*1.35);
+    const ly    = cy + Math.sin(mid)*(r*1.35);
+    const ls    = cx + Math.cos(mid)*(r+4);
+    const le    = cx + Math.cos(mid)*(r+20);
+    const lsy   = cy + Math.sin(mid)*(r+4);
+    const ley   = cy + Math.sin(mid)*(r+20);
+    const dir   = lx > cx ? 1 : -1;
+
+    ctx.beginPath(); ctx.moveTo(ls,lsy); ctx.lineTo(le,ley);
+    ctx.strokeStyle=COLORS[i%COLORS.length]; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(le,ley); ctx.lineTo(le+dir*18,ley);
+    ctx.stroke();
+
+    const tx2 = le + dir*22;
+    ctx.textAlign = dir>0 ? 'left' : 'right';
+    ctx.fillStyle = COLORS[i%COLORS.length];
+    ctx.font = `700 ${Math.round(r*0.16)}px Syne`;
+    ctx.fillText(pct+'%', tx2, ley-2);
+    ctx.fillStyle = '#8a8799';
+    ctx.font = `${Math.round(r*0.14)}px Syne`;
+    ctx.fillText(labels[i], tx2, ley+Math.round(r*0.16));
+    angle += slice;
+  });
+
+  if (legend) legend.innerHTML = labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
+}
+
+function renderWalletDonutInto(canvasId, legendId) {
+  const canvas = document.getElementById(canvasId); if (!canvas) return;
+  const W = canvas.width  || canvas.offsetWidth  || 400;
+  const H = canvas.height || canvas.offsetHeight || 300;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
+  const legend = document.getElementById(legendId);
+  const items = allWalletItems();
+  const labels=[], data=[];
+  items.forEach(item=>{ const bal=calcWalletBalance(item); if(bal>0){labels.push(item.name);data.push(bal);} });
+  const total = data.reduce((a,b)=>a+b,0);
+  if (!total) {
+    ctx.fillStyle='#4a4858'; ctx.font='14px Syne'; ctx.textAlign='center';
+    ctx.fillText('Belum ada dompet', W/2, H/2);
+    if(legend) legend.innerHTML=''; return;
+  }
+  const cx=W/2, cy=H/2, r=Math.min(W,H)*0.36;
+  let angle=-Math.PI/2;
   data.forEach((v,i)=>{
     const slice=(v/total)*Math.PI*2;
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();
     ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();angle+=slice;
   });
-  const bgC=document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
+  const bgC=document.documentElement.classList.contains('light')?'#ffffff':'#14141a';
   ctx.beginPath();ctx.arc(cx,cy,r*0.52,0,Math.PI*2);ctx.fillStyle=bgC;ctx.fill();
-  ctx.fillStyle='#eeeae2';ctx.textAlign='center';ctx.font='500 11px Syne';ctx.fillText(isExp?'Keluar':'Masuk',cx,cy-5);
-  ctx.font='500 12px JetBrains Mono';ctx.fillStyle=isExp?'#f54e6a':'#4ef5b0';
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
-  labels.slice(0,5).forEach((lbl,i)=>{
-    const pct=Math.round(data[i]/total*100);
-    ctx.fillStyle=COLORS[i%COLORS.length];ctx.fillRect(W-130,22+i*30,8,8);
-    ctx.fillStyle='#8a8799';ctx.font='10px Syne';ctx.textAlign='left';ctx.fillText(lbl,W-118,30+i*30);
-    ctx.fillStyle='#eeeae2';ctx.font='500 10px JetBrains Mono';ctx.fillText(pct+'%',W-118,42+i*30);
+  ctx.textAlign='center';
+  ctx.fillStyle='#8a8799';ctx.font=`${Math.round(r*0.16)}px Syne`;ctx.fillText('Total',cx,cy-r*0.08);
+  ctx.fillStyle='#d4f54e';ctx.font=`600 ${Math.round(r*0.18)}px JetBrains Mono`;
+  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+r*0.14);
+  angle=-Math.PI/2;
+  data.forEach((v,i)=>{
+    const slice=(v/total)*Math.PI*2;
+    const pct=Math.round(v/total*100);
+    const mid=angle+slice/2;
+    const lx=cx+Math.cos(mid)*(r*1.35), ly=cy+Math.sin(mid)*(r*1.35);
+    const ls=cx+Math.cos(mid)*(r+4), le=cx+Math.cos(mid)*(r+20);
+    const lsy=cy+Math.sin(mid)*(r+4), ley=cy+Math.sin(mid)*(r+20);
+    const dir=lx>cx?1:-1;
+    ctx.beginPath();ctx.moveTo(ls,lsy);ctx.lineTo(le,ley);
+    ctx.strokeStyle=COLORS[i%COLORS.length];ctx.lineWidth=1.5;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(le,ley);ctx.lineTo(le+dir*18,ley);ctx.stroke();
+    const tx2=le+dir*22;
+    ctx.textAlign=dir>0?'left':'right';
+    ctx.fillStyle=COLORS[i%COLORS.length];ctx.font=`700 ${Math.round(r*0.16)}px Syne`;
+    ctx.fillText(pct+'%',tx2,ley-2);
+    ctx.fillStyle='#8a8799';ctx.font=`${Math.round(r*0.14)}px Syne`;
+    ctx.fillText(labels[i],tx2,ley+Math.round(r*0.16));
+    angle+=slice;
   });
-  if(legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
-}
-
-function renderWalletDonutInto(canvasId, legendId) {
-  const canvas=document.getElementById(canvasId); if(!canvas) return;
-  const W=canvas.offsetWidth||400; canvas.width=W;
-  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
-  const legend=document.getElementById(legendId);
-  const items=allWalletItems();
-  const labels=[],data=[];
-  items.forEach(item=>{const bal=calcWalletBalance(item);if(bal>0){labels.push(item.name);data.push(bal);}});
-  const total=data.reduce((a,b)=>a+b,0);
-  if(!total){ctx.fillStyle='#4a4858';ctx.font='13px Syne';ctx.textAlign='center';ctx.fillText('Belum ada dompet',W/2,90);if(legend)legend.innerHTML='';return;}
-  const cx=90,cy=88,r=70;let angle=-Math.PI/2;
-  data.forEach((v,i)=>{const slice=(v/total)*Math.PI*2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,angle,angle+slice);ctx.closePath();ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();angle+=slice;});
-  const bgC=document.documentElement.classList.contains('light')?'#f5f4f0':'#0d0d10';
-  ctx.beginPath();ctx.arc(cx,cy,r*0.52,0,Math.PI*2);ctx.fillStyle=bgC;ctx.fill();
-  ctx.fillStyle='#eeeae2';ctx.textAlign='center';ctx.font='500 11px Syne';ctx.fillText('Total',cx,cy-5);
-  ctx.font='500 12px JetBrains Mono';ctx.fillStyle='#d4f54e';
-  ctx.fillText(total>=1e6?'Rp '+(total/1e6).toFixed(1)+'jt':fmt(total),cx,cy+12);
-  labels.slice(0,5).forEach((lbl,i)=>{const pct=Math.round(data[i]/total*100);ctx.fillStyle=COLORS[i%COLORS.length];ctx.fillRect(W-130,22+i*30,8,8);ctx.fillStyle='#8a8799';ctx.font='10px Syne';ctx.textAlign='left';ctx.fillText(lbl,W-118,30+i*30);ctx.fillStyle='#eeeae2';ctx.font='500 10px JetBrains Mono';ctx.fillText(pct+'%',W-118,42+i*30);});
   if(legend) legend.innerHTML=labels.map((l,i)=>`<div class="leg-item"><div class="leg-dot" style="background:${COLORS[i%COLORS.length]}"></div>${l}</div>`).join('');
 }
 
 function renderBarInto(canvasId) {
   const canvas=document.getElementById(canvasId); if(!canvas) return;
-  const W=canvas.offsetWidth||400; canvas.width=W;
-  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,180);
+  // Use parent container size for proper fit
+  const parent = canvas.parentElement;
+  const titleEl = parent?.querySelector('.ldc-title,.chart-sub');
+  const titleH  = titleEl ? titleEl.offsetHeight + 8 : 24;
+  const W = parent ? parent.clientWidth  - 28 : (canvas.offsetWidth  || 400);
+  const H = parent ? Math.max(120, parent.clientHeight - titleH - 20) : (canvas.offsetHeight || 160);
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,W,H);
   const filtered=getFilteredTxsForLaporan();
   const months=[];
   for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
