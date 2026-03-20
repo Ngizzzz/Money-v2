@@ -300,7 +300,7 @@ function renderRecent() {
     if (b.date !== a.date) return b.date.localeCompare(a.date);
     return b.id.localeCompare(a.id);
   });
-  renderTxList(document.getElementById('recent-list'), sorted.slice(0,5));
+  renderTxListSimple(document.getElementById('recent-list'), sorted.slice(0,5));
 }
 function renderHistory() {
   populateFilters();
