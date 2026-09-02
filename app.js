@@ -457,10 +457,10 @@ function setupWalletPage() {
 let _wdActiveTab = 'semua';
 
 function renderWalletPage() {
-  // Hitung total
+  // Hitung total — hanya dompet yang counted
   let totalAll = 0;
   wallets.forEach(cat => cat.items.forEach(item => {
-    totalAll += calcWalletBalance(item);
+    if (item.counted !== false) totalAll += calcWalletBalance(item);
   }));
   const totalEl = document.getElementById('w-total-all');
   if (totalEl) totalEl.textContent = fmt(totalAll);
