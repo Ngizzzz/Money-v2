@@ -395,6 +395,40 @@ function renderTxList(container, list) {
     </div>`;
   });
   container.innerHTML = html;
+
+  // Event listeners
+  container.querySelectorAll('[data-edit-cat]').forEach(b =>
+    b.addEventListener('click', () => openModalWcat(b.dataset.editCat))
+  );
+  container.querySelectorAll('[data-del-cat]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus kategori ini?')) return;
+      wallets = wallets.filter(c => c.id !== b.dataset.delCat);
+      if (_wdActiveTab === b.dataset.delCat) _wdActiveTab = 'semua';
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Kategori dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-add-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.addItem))
+  );
+  container.querySelectorAll('[data-edit-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.cat, b.dataset.editItem))
+  );
+  container.querySelectorAll('[data-del-item]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus dompet ini?')) return;
+      const cat = wallets.find(c => c.id === b.dataset.cat);
+      if (cat) cat.items = cat.items.filter(i => i.id !== b.dataset.delItem);
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Dompet dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-adjust]').forEach(b =>
+    b.addEventListener('click', () => openModalAdjust(b.dataset.adjust))
+  );
   container.querySelectorAll('.tx-item').forEach(item => {
     item.addEventListener('click', e => {
       if (e.target.closest('.tx-del')) return;
@@ -420,82 +454,112 @@ function setupWalletPage() {
   btn('btn-add-wallet-cat', () => openModalWcat());
 }
 
+let _wdActiveTab = 'semua';
+
 function renderWalletPage() {
-  let totalCounted = 0, totalAll = 0;
+  // Hitung total
+  let totalAll = 0;
   wallets.forEach(cat => cat.items.forEach(item => {
-    const bal = calcWalletBalance(item);
-    totalAll += bal;
-    if (item.counted !== false) totalCounted += bal;
+    totalAll += calcWalletBalance(item);
   }));
-  document.getElementById('w-total-counted').textContent = fmt(totalCounted);
-  document.getElementById('w-total-all').textContent     = fmt(totalAll);
+  const totalEl = document.getElementById('w-total-all');
+  if (totalEl) totalEl.textContent = fmt(totalAll);
+
+  // Render filter tabs
+  const tabsEl = document.getElementById('wd-tabs');
+  if (tabsEl) {
+    const tabs = [{ id:'semua', label:'Semua' }, ...wallets.map(c=>({ id:c.id, label:c.name }))];
+    tabsEl.innerHTML = tabs.map(t =>
+      `<button class="wd-tab ${_wdActiveTab===t.id?'active':''}" data-wdtab="${t.id}">${t.label}</button>`
+    ).join('');
+    tabsEl.querySelectorAll('.wd-tab').forEach(b => {
+      b.addEventListener('click', () => {
+        _wdActiveTab = b.dataset.wdtab;
+        renderWalletPage();
+      });
+    });
+  }
 
   const container = document.getElementById('wallet-cats-list');
-  if (!wallets.length) { container.innerHTML='<div class="empty">Belum ada dompet. Tambah kategori dulu!</div>'; return; }
+  if (!wallets.length) {
+    container.innerHTML = '<div class="empty" style="padding:20px 0">Belum ada dompet. Tambah kategori dulu!</div>';
+    return;
+  }
 
-  container.innerHTML = wallets.map(cat => {
-    const catTotal = cat.items.reduce((s,i)=>s+calcWalletBalance(i),0);
-    return `<div class="wallet-cat-card">
-      <div class="wallet-cat-hdr" data-catid="${cat.id}">
-        <div class="wallet-cat-hdr-left">
-          <span class="wallet-cat-icon">${cat.icon||'📁'}</span>
-          <div class="wallet-cat-info">
-            <div class="wallet-cat-name">${cat.name}</div>
-            <div class="wallet-cat-total">${fmt(catTotal)} <span class="wallet-cat-pct">(${totalAll>0?Math.round(Math.max(0,catTotal)/totalAll*100):0}%)</span></div>
-          </div>
-        </div>
-        <div class="wallet-cat-actions">
+  // Filter categories based on active tab
+  const catsToShow = _wdActiveTab === 'semua' ? wallets : wallets.filter(c => c.id === _wdActiveTab);
+
+  let html = '';
+  catsToShow.forEach(cat => {
+    const catTotal = cat.items.reduce((s,i) => s + calcWalletBalance(i), 0);
+    html += `<div class="wd-cat-section" data-catid="${cat.id}">
+      <div class="wd-cat-hdr">
+        <span class="wd-cat-name">${cat.icon||'📁'} ${cat.name}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="wd-cat-total">${fmt(catTotal)}</span>
           <button class="wallet-item-btn" data-edit-cat="${cat.id}" title="Edit">✏️</button>
           <button class="wallet-item-btn del" data-del-cat="${cat.id}" title="Hapus">🗑️</button>
-          <span class="wcat-toggle" data-toggle="${cat.id}">▼</span>
         </div>
       </div>
-      <div class="wallet-items" id="wcat-items-${cat.id}">
-        ${(()=>{
-          const catPos = cat.items.reduce((s,i)=>s+Math.max(0,calcWalletBalance(i)),0);
-          return cat.items.map(item => {
-            const bal = calcWalletBalance(item);
-            const counted = item.counted !== false;
-            const pct = catPos>0 ? Math.round(Math.max(0,bal)/catPos*100) : 0;
-            return `<div class="wallet-item">
-              <div class="wallet-item-left">
-                <div class="wallet-item-name">${item.name} <span class="wallet-cat-pct">(${pct}%)</span></div>
-                <div class="wallet-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
-                <div class="wallet-item-pct-bar"><div class="wallet-item-pct-fill" style="width:${pct}%"></div></div>
-              </div>
-              <div class="wallet-item-right">
-                <div class="wallet-item-bal ${bal<0?'negative':''}">${fmt(bal)}</div>
-                <span class="counted-badge ${counted?'yes':'no'}">${counted?'✓':'✗'}</span>
-                <button class="wallet-item-btn" data-adjust="${item.id}" title="Sesuaikan saldo">⚖️</button>
-                <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}" title="Edit">✏️</button>
-                <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}" title="Hapus">🗑️</button>
-              </div>
-            </div>`;
-          }).join('');
-        })()}
-        <button class="wallet-add-item-btn" data-add-item="${cat.id}">＋ Tambah ${cat.name}</button>
-      </div>
+      ${cat.items.map(item => {
+        const bal = calcWalletBalance(item);
+        const counted = item.counted !== false;
+        return `<div class="wd-item">
+          <div class="wd-item-left">
+            <div class="wd-item-icon">${cat.icon||'📁'}</div>
+            <div>
+              <div class="wd-item-name">${item.name}</div>
+              <div class="wd-item-sub">Saldo awal: ${fmt(item.initialBalance||0)}</div>
+            </div>
+          </div>
+          <div class="wd-item-right">
+            <span class="wd-item-bal ${bal<0?'negative':''}">${fmt(bal)}</span>
+            <div class="wd-item-actions">
+              <button class="wallet-item-btn" data-adjust="${item.id}" title="Sesuaikan">⚖️</button>
+              <button class="wallet-item-btn" data-edit-item="${item.id}" data-cat="${cat.id}" title="Edit">✏️</button>
+              <button class="wallet-item-btn del" data-del-item="${item.id}" data-cat="${cat.id}" title="Hapus">🗑️</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      <button class="wallet-add-item-btn" data-add-item="${cat.id}" style="margin:8px 0">＋ Tambah ${cat.name}</button>
     </div>`;
-  }).join('');
-
-  // Toggle expand/collapse — tetap terbuka sampai diklik lagi
-  container.querySelectorAll('.wallet-cat-hdr').forEach(hdr => {
-    hdr.addEventListener('click', e => {
-      if (e.target.closest('button')) return;
-      const id    = hdr.dataset.catid;
-      const items = document.getElementById('wcat-items-'+id);
-      const tog   = hdr.querySelector('.wcat-toggle');
-      const isOpen = items.classList.contains('open');
-      // Tutup semua dulu
-      container.querySelectorAll('.wallet-items').forEach(el => el.classList.remove('open'));
-      container.querySelectorAll('.wcat-toggle').forEach(el => el.classList.remove('open'));
-      // Kalau sebelumnya tertutup, buka yang ini
-      if (!isOpen) {
-        items.classList.add('open');
-        tog.classList.add('open');
-      }
-    });
   });
+  container.innerHTML = html;
+
+  // Event listeners
+  container.querySelectorAll('[data-edit-cat]').forEach(b =>
+    b.addEventListener('click', () => openModalWcat(b.dataset.editCat))
+  );
+  container.querySelectorAll('[data-del-cat]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus kategori ini?')) return;
+      wallets = wallets.filter(c => c.id !== b.dataset.delCat);
+      if (_wdActiveTab === b.dataset.delCat) _wdActiveTab = 'semua';
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Kategori dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-add-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.addItem))
+  );
+  container.querySelectorAll('[data-edit-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.cat, b.dataset.editItem))
+  );
+  container.querySelectorAll('[data-del-item]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus dompet ini?')) return;
+      const cat = wallets.find(c => c.id === b.dataset.cat);
+      if (cat) cat.items = cat.items.filter(i => i.id !== b.dataset.delItem);
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Dompet dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-adjust]').forEach(b =>
+    b.addEventListener('click', () => openModalAdjust(b.dataset.adjust))
+  );
 
   // Edit category
   container.querySelectorAll('[data-edit-cat]').forEach(b =>
@@ -1601,6 +1665,40 @@ function renderTxListInto(container, list) {
     </div>`;
   });
   container.innerHTML = html;
+
+  // Event listeners
+  container.querySelectorAll('[data-edit-cat]').forEach(b =>
+    b.addEventListener('click', () => openModalWcat(b.dataset.editCat))
+  );
+  container.querySelectorAll('[data-del-cat]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus kategori ini?')) return;
+      wallets = wallets.filter(c => c.id !== b.dataset.delCat);
+      if (_wdActiveTab === b.dataset.delCat) _wdActiveTab = 'semua';
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Kategori dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-add-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.addItem))
+  );
+  container.querySelectorAll('[data-edit-item]').forEach(b =>
+    b.addEventListener('click', () => openModalWitem(b.dataset.cat, b.dataset.editItem))
+  );
+  container.querySelectorAll('[data-del-item]').forEach(b =>
+    b.addEventListener('click', () => {
+      if (!confirm('Hapus dompet ini?')) return;
+      const cat = wallets.find(c => c.id === b.dataset.cat);
+      if (cat) cat.items = cat.items.filter(i => i.id !== b.dataset.delItem);
+      persist(); renderWalletPage(); populateWalletSelects();
+      toast('Dompet dihapus');
+      if (cfg.scriptUrl) syncWalletsToSheets();
+    })
+  );
+  container.querySelectorAll('[data-adjust]').forEach(b =>
+    b.addEventListener('click', () => openModalAdjust(b.dataset.adjust))
+  );
   container.querySelectorAll('.tx-item').forEach(item => {
     item.addEventListener('click', e => { if(e.target.closest('.tx-del')) return; openEditTx(item.dataset.txId); });
   });
